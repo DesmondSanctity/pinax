@@ -10,8 +10,7 @@ Closes #
 - [ ] New behaviour has a test; bug fixes have a regression test
 - [ ] No new dependencies, or justification in this PR description
 - [ ] No unrelated changes to `go.mod` / `go.sum`
-- [ ] `CHANGELOG.md` updated under `[Unreleased]` for user-visible changes
-- [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+- [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, ...) so auto-generated release notes group them correctly
 
 ## Notes for the reviewer
 

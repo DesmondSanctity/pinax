@@ -113,7 +113,7 @@ Before opening a PR, make sure:
 - [ ] New behaviour has a test; bug fixes have a regression test
 - [ ] No new dependencies, or justification in the PR description
 - [ ] No changes to `go.mod` other than what your code requires
-- [ ] `README.md` / `CHANGELOG.md` updated if you changed user-visible behaviour
+- [ ] `README.md` updated if you changed user-visible behaviour
 - [ ] Commit messages follow Conventional Commits
 - [ ] PR description explains the _why_, not just the _what_
 
