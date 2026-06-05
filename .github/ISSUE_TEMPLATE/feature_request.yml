@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose new behaviour or a change to existing behaviour.
+labels: [enhancement]
+body:
+ - type: textarea
+   id: problem
+   attributes:
+    label: The problem
+    description: What are you trying to do that Pinax makes hard today?
+   validations:
+    required: true
+
+ - type: textarea
+   id: proposal
+   attributes:
+    label: Proposed solution
+    description: How would you want this to work? Concrete CLI / tool examples help.
+   validations:
+    required: true
+
+ - type: textarea
+   id: alternatives
+   attributes:
+    label: Alternatives considered
+    description: Other approaches you've thought about and why they don't fit.

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 170" role="img" aria-label="Pinax — any docs site to local MCP server">
+  <title>Pinax — any docs site → local MCP server</title>
+  <rect width="100%" height="100%" rx="10" ry="10" fill="#0d1117"/>
+  <g font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas, monospace" font-size="18" font-weight="700">
+    <text x="24" y="38" fill="#7dd3fc" xml:space="preserve"> ____ ___ _   _    _    __  __</text>
+    <text x="24" y="58" fill="#7dd3fc" xml:space="preserve">|  _ \_ _| \ | |  / \   \ \/ /</text>
+    <text x="24" y="78" fill="#67e8f9" xml:space="preserve">| |_) | ||  \| | / _ \   \  / </text>
+    <text x="24" y="98" fill="#67e8f9" xml:space="preserve">|  __/| || |\  |/ ___ \  /  \ </text>
+    <text x="24" y="118" fill="#5eead4" xml:space="preserve">|_|  |___|_| \_/_/   \_\/_/\_\</text>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas, monospace" font-size="14">
+    <text x="24" y="148" fill="#fbbf24" xml:space="preserve">any docs site </text>
+    <text x="142" y="148" fill="#94a3b8" xml:space="preserve">→</text>
+    <text x="156" y="148" fill="#fbbf24" xml:space="preserve"> local MCP server</text>
+  </g>
+</svg>

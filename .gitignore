@@ -1,0 +1,9 @@
+bin/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+coverage.out
+
+# Internal design docs (kept local for development reference only).
+docs/

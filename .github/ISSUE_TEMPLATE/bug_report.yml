@@ -1,0 +1,60 @@
+name: Bug report
+description: Something Pinax does that it shouldn't, or doesn't do that it should.
+labels: [bug]
+body:
+ - type: input
+   id: version
+   attributes:
+    label: Pinax version
+    description: Output of `pinax --version`.
+    placeholder: 'pinax v0.1.0 (commit abc1234, built 2026-..., darwin/arm64, go1.24.1)'
+   validations:
+    required: true
+
+ - type: input
+   id: go_os
+   attributes:
+    label: Go version & OS
+    description: Output of `go version` and your OS.
+    placeholder: 'go version go1.24.1 darwin/arm64 — macOS 15.2'
+   validations:
+    required: true
+
+ - type: input
+   id: docs_url
+   attributes:
+    label: Documentation URL
+    description: The site you were trying to index or query.
+    placeholder: 'https://docs.example.com'
+   validations:
+    required: true
+
+ - type: textarea
+   id: command
+   attributes:
+    label: Exact command
+    render: shell
+    placeholder: pinax add https://docs.example.com --max-pages 500
+   validations:
+    required: true
+
+ - type: textarea
+   id: expected
+   attributes:
+    label: What you expected
+   validations:
+    required: true
+
+ - type: textarea
+   id: actual
+   attributes:
+    label: What actually happened
+    description: Include stderr output and, if relevant, rows from `~/.pinax/calls.db` (the log viewer makes this easy).
+   validations:
+    required: true
+
+ - type: textarea
+   id: extra
+   attributes:
+    label: Anything else
+    description: Network conditions, proxies, anything unusual.

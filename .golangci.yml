@@ -1,0 +1,65 @@
+version: '2'
+
+run:
+ timeout: 5m
+ tests: true
+linters:
+ default: none
+ enable:
+  - errcheck
+  - govet
+  - ineffassign
+  - staticcheck
+  - unused
+  - revive
+  - gosec
+  - misspell
+  - unconvert
+  - unparam
+  - bodyclose
+ settings:
+  errcheck:
+   exclude-functions:
+    - fmt.Fprint
+    - fmt.Fprintf
+    - fmt.Fprintln
+    - (io.Closer).Close
+    - (*database/sql.Rows).Close
+    - os.Remove
+  revive:
+   rules:
+    - name: exported
+      disabled: true
+    - name: package-comments
+      disabled: true
+  gosec:
+   excludes:
+    - G104 # already covered by errcheck
+    - G304 # we read files by user-provided path on purpose (manifests)
+ exclusions:
+  rules:
+   - path: _test\.go
+     linters: [gosec, errcheck, unparam]
+   # Cache/log/manifest dirs use 0o700 in code; gosec misreads the constant.
+   - path: internal/(cache|logger|manifest)/
+     text: 'G301'
+     linters: [gosec]
+   # logger.List builds WHERE from a fixed allowlist; values use ? binding.
+   - path: internal/logger/store\.go
+     text: 'G202'
+     linters: [gosec]
+
+formatters:
+ enable:
+  - gofmt
+  - goimports
+ settings:
+  gofmt:
+   simplify: true
+  goimports:
+   local-prefixes:
+    - pinax
+
+issues:
+ max-issues-per-linter: 0
+ max-same-issues: 0
