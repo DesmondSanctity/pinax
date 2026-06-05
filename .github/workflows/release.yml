@@ -24,17 +24,6 @@ jobs:
       - name: Install syft (for SBOM generation)
         uses: anchore/sbom-action/download-syft@v0
 
-      - name: Debug HOMEBREW_TAP_GITHUB_TOKEN secret (length + sha256 fingerprint only)
-        env:
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-        run: |
-          if [ -z "$HOMEBREW_TAP_GITHUB_TOKEN" ]; then
-            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN secret is EMPTY or not set"
-            exit 1
-          fi
-          echo "length=${#HOMEBREW_TAP_GITHUB_TOKEN}"
-          echo "sha256=$(printf %s "$HOMEBREW_TAP_GITHUB_TOKEN" | sha256sum | cut -c1-12)"
-
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
