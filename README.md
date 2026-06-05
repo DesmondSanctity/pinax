@@ -12,6 +12,10 @@
 
 > Turn any documentation site into a local MCP server in under a minute.
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Pinax demo — banner, list indexed docs, serve MCP over HTTP" width="800">
+</p>
+
 Pinax is a small Go CLI that crawls a public documentation site, indexes its
 structure, and exposes it to any [Model Context Protocol](https://modelcontextprotocol.io)
 client (Claude Desktop, Cursor, Windsurf, Copilot, custom agents) as four
