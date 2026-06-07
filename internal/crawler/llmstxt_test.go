@@ -128,3 +128,41 @@ func TestProbeLLMSTxt_ParsesMarkdownLinks(t *testing.T) {
 		t.Errorf("expected title 'Query Functions', got %q", pages[0].Title)
 	}
 }
+
+func TestProbeLLMSTxt_ParsesBulletListFormat(t *testing.T) {
+	// llmstxt.org standard: bulleted lists under section headings.
+	// Regression for the apex-llms.txt fallback silently producing 0 pages
+	// because "- [Title](URL)" wasn't recognised as a link line.
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/llms.txt" {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w,
+				"# Example llms.txt\n"+
+					"\n"+
+					"## Guide\n"+
+					"\n"+
+					"- [Intro](%s/guide/intro)\n"+
+					"* [Images](%s/guide/images.md)\n"+
+					"  + [Nested](%s/guide/nested)\n",
+				srv.URL, srv.URL, srv.URL)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	pages, err := crawler.ProbeLLMSTxt(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(pages) != 3 {
+		t.Fatalf("expected 3 pages from bullet-list llms.txt, got %d", len(pages))
+	}
+	wantTitles := []string{"Intro", "Images", "Nested"}
+	for i, want := range wantTitles {
+		if pages[i].Title != want {
+			t.Errorf("pages[%d].Title = %q, want %q", i, pages[i].Title, want)
+		}
+	}
+}

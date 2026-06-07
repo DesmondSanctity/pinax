@@ -83,6 +83,10 @@ func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Pa
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		// Strip leading bullet-list markers ("- ", "* ", "+ ") so the
+		// standard llmstxt.org "- [Title](URL)" form parses the same as
+		// a bare "[Title](URL)" line.
+		line = trimBulletPrefix(line)
 
 		title, linkURL := parseMarkdownLink(line)
 		if linkURL == "" && strings.HasPrefix(line, "http") {
@@ -148,6 +152,19 @@ func siteOrigin(raw string) (string, error) {
 		return "", fmt.Errorf("invalid base URL: %s", raw)
 	}
 	return u.Scheme + "://" + u.Host, nil
+}
+
+// trimBulletPrefix strips a single leading markdown bullet marker
+// ("- ", "* ", "+ ") so "- [Title](URL)" parses the same as "[Title](URL)".
+// The llmstxt.org spec uses bulleted lists under section headings.
+func trimBulletPrefix(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	if (s[0] == '-' || s[0] == '*' || s[0] == '+') && s[1] == ' ' {
+		return strings.TrimLeft(s[2:], " ")
+	}
+	return s
 }
 
 // basePathPrefix returns scheme://host + cleaned base path (without trailing
