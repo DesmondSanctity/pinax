@@ -388,3 +388,57 @@ func TestUnified_ReloadHookPicksUpNewManifest(t *testing.T) {
 		t.Fatalf("expected gamma to resolve after reload: %s", toolText(t, res))
 	}
 }
+
+// ---- BM25 integration ----
+
+func TestSearchPages_UsesBM25WhenIndexPresent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := &manifest.Manifest{
+		Name:    "bm25test",
+		BaseURL: "https://x.com",
+		Pages: []crawler.Page{
+			{URL: "https://x.com/auth", Title: "Auth Overview", Section: "/"},
+			{URL: "https://x.com/auth/login", Title: "Login", Section: "auth"},
+		},
+	}
+	if err := manifest.Save(m); err != nil {
+		t.Fatal(err)
+	}
+	// Reload to pick up index path resolution via HOME.
+	loaded, err := manifest.Load("bm25test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := tools.NewSingle(loaded, nil)
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "login"})
+	if res.IsError {
+		t.Fatalf("search errored: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || hits[0].Title != "Login" {
+		t.Errorf("BM25 should rank Login first, got %+v", hits)
+	}
+}
+
+func TestSearchPages_FallsBackToFuzzyWhenIndexMissing(t *testing.T) {
+	// Build a manifest in-memory (no Save → no .bm25 on disk).
+	m := testManifest(
+		crawler.Page{URL: "https://e.com/api/login", Title: "Login API"},
+	)
+	d := tools.NewSingle(m, nil)
+	// Misspelling — only fuzzy path can find this.
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "logn"})
+	if res.IsError {
+		t.Fatalf("fuzzy fallback errored: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Error("expected fuzzy fallback to match 'logn' against 'Login API'")
+	}
+}

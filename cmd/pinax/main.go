@@ -37,6 +37,8 @@ func main() {
 		err = cmdRemove(rest)
 	case "refresh":
 		err = cmdRefresh(rest)
+	case "search":
+		err = cmdSearch(rest)
 	case "serve":
 		err = cmdServe(rest)
 	case "cache":
@@ -72,7 +74,8 @@ Usage:
   pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N]
   pinax list
   pinax remove <name>
-  pinax refresh <name>
+  pinax refresh <name> [--rebuild-index]
+  pinax search <name> <query>
   pinax serve <name> [--http] [--port N]
   pinax cache clear [--older-than DURATION]
   pinax config claude [--project]
@@ -98,7 +101,7 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fmt.Fprintln(w, "Usage: pinax cache clear [flags]")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
-	case "list", "remove", "rm", "refresh", "config":
+	case "list", "remove", "rm", "refresh", "config", "search":
 		usage(w)
 	default:
 		fmt.Fprintf(w, "unknown command %q\n\n", cmd)
@@ -203,13 +206,25 @@ func cmdRemove(args []string) error {
 // ---------- refresh ----------
 
 func cmdRefresh(args []string) error {
-	if len(args) < 1 {
+	fs := flag.NewFlagSet("refresh", flag.ContinueOnError)
+	rebuildOnly := fs.Bool("rebuild-index", false, "only rebuild the BM25 index; skip re-crawling")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
 		return fmt.Errorf("refresh: missing <name>")
 	}
-	name := args[0]
+	name := fs.Arg(0)
 	m, err := manifest.Load(name)
 	if err != nil {
 		return err
+	}
+	if *rebuildOnly {
+		if err := manifest.SaveIndex(name, manifest.BuildIndex(m.Pages)); err != nil {
+			return err
+		}
+		fmt.Printf("rebuilt search index for %s (%d pages)\n", name, len(m.Pages))
+		return nil
 	}
 	fmt.Printf("re-crawling %s ...\n", m.BaseURL)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -224,6 +239,53 @@ func cmdRefresh(args []string) error {
 	}
 	fmt.Printf("refreshed %s — %d pages\n", name, len(updated.Pages))
 	return nil
+}
+
+// ---------- search ----------
+
+func cmdSearch(args []string) error {
+	fs := flag.NewFlagSet("search", flag.ContinueOnError)
+	limit := fs.Int("limit", 10, "max results")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 2 {
+		return fmt.Errorf("search: usage: pinax search <name> <query>")
+	}
+	name := fs.Arg(0)
+	query := strings.Join(fs.Args()[1:], " ")
+
+	m, err := manifest.Load(name)
+	if err != nil {
+		return err
+	}
+	idx, err := manifest.LoadIndex(name)
+	if err != nil {
+		if err == manifest.ErrIndexMissing {
+			return fmt.Errorf("no search index for %q — run 'pinax refresh %s --rebuild-index'", name, name)
+		}
+		return err
+	}
+	hits := idx.Search(query, *limit)
+	if len(hits) == 0 {
+		fmt.Println("(no matches)")
+		return nil
+	}
+	for _, h := range hits {
+		if h.DocID < 0 || h.DocID >= len(m.Pages) {
+			continue
+		}
+		p := m.Pages[h.DocID]
+		fmt.Printf("%7.3f  %-40s  %s\n", h.Score, truncate(p.Title, 40), p.URL)
+	}
+	return nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
 }
 
 // ---------- serve ----------

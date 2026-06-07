@@ -46,6 +46,12 @@ type Deps struct {
 	mu        sync.RWMutex
 	manifests map[string]*manifest.Manifest
 
+	// indexMu protects the per-manifest BM25 index cache. Keyed by the
+	// *manifest.Manifest pointer so stale entries fall out automatically when
+	// Reload swaps in a fresh map.
+	indexMu    sync.Mutex
+	indexCache map[*manifest.Manifest]*manifest.Index
+
 	// sessionMu protects sessionCache for concurrent tool calls within a single
 	// running server process.
 	sessionMu    sync.RWMutex
@@ -62,6 +68,7 @@ func New(manifests map[string]*manifest.Manifest, c *cache.PageCache) *Deps {
 		manifests:    manifests,
 		Cache:        c,
 		HTTP:         &http.Client{Timeout: 30 * time.Second},
+		indexCache:   make(map[*manifest.Manifest]*manifest.Index),
 		sessionCache: make(map[string]string),
 	}
 }
@@ -265,6 +272,12 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		limit = 50
 	}
 
+	// Try BM25 first. Falls through to the legacy substring/fuzzy pipeline
+	// when the index is missing (pre-v0.2 manifest) or returns zero hits.
+	if bm25Hits := d.bm25Search(m, q, limit); len(bm25Hits) > 0 {
+		return jsonResult(bm25Hits)
+	}
+
 	tokens := strings.Fields(strings.ToLower(q))
 
 	type scored struct {
@@ -304,6 +317,57 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		hits[i] = SearchHit{URL: m.page.URL, Title: m.page.Title, Section: m.page.Section}
 	}
 	return jsonResult(hits)
+}
+
+// bm25Search runs the BM25 ranker for q against m and returns SearchHits.
+// Returns nil when the index is missing, stale, or has no matches — the
+// caller then falls back to the legacy substring/fuzzy pipeline.
+func (d *Deps) bm25Search(m *manifest.Manifest, q string, limit int) []SearchHit {
+	idx := d.loadIndex(m)
+	if idx == nil {
+		return nil
+	}
+	hits := idx.Search(q, limit)
+	if len(hits) == 0 {
+		return nil
+	}
+	out := make([]SearchHit, 0, len(hits))
+	for _, h := range hits {
+		if h.DocID < 0 || h.DocID >= len(m.Pages) {
+			continue
+		}
+		p := m.Pages[h.DocID]
+		out = append(out, SearchHit{URL: p.URL, Title: p.Title, Section: p.Section})
+	}
+	return out
+}
+
+// loadIndex returns the BM25 index for m, lazily reading it from disk and
+// caching it keyed by *Manifest pointer (so Reload-swapped manifests
+// invalidate naturally). Returns nil when no usable index exists.
+func (d *Deps) loadIndex(m *manifest.Manifest) *manifest.Index {
+	if m == nil {
+		return nil
+	}
+	d.indexMu.Lock()
+	if idx, ok := d.indexCache[m]; ok {
+		d.indexMu.Unlock()
+		return idx
+	}
+	d.indexMu.Unlock()
+
+	idx, err := manifest.LoadIndex(m.Name)
+	if err != nil {
+		return nil
+	}
+
+	d.indexMu.Lock()
+	if d.indexCache == nil {
+		d.indexCache = make(map[*manifest.Manifest]*manifest.Index)
+	}
+	d.indexCache[m] = idx
+	d.indexMu.Unlock()
+	return idx
 }
 
 // scoreTokens requires every token to appear as a substring of haystack.

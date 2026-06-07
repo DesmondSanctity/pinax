@@ -76,7 +76,16 @@ func Save(m *Manifest) error {
 		_ = os.Remove(tmpName)
 		return err
 	}
-	return os.Rename(tmpName, p)
+	if err := os.Rename(tmpName, p); err != nil {
+		return err
+	}
+	// Rebuild the search index alongside the manifest. Failure here is logged
+	// to stderr but doesn't fail the save — a missing index causes
+	// search_pages to fall back to its legacy ranker.
+	if err := SaveIndex(m.Name, BuildIndex(m.Pages)); err != nil {
+		fmt.Fprintf(os.Stderr, "pinax: warning: failed to write search index for %q: %v\n", m.Name, err)
+	}
+	return nil
 }
 
 // Load reads a manifest by name.
@@ -151,6 +160,8 @@ func Delete(name string) error {
 		}
 		return err
 	}
+	// Best-effort: remove the companion index file too. Missing is fine.
+	_ = DeleteIndex(name)
 	return nil
 }
 
