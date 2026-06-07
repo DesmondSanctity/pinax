@@ -13,11 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"pinax/internal/buildinfo"
 	"pinax/internal/cache"
 	"pinax/internal/crawler"
+	"pinax/internal/doctor"
 	"pinax/internal/logger"
 	"pinax/internal/manifest"
 	mcpserver "pinax/internal/mcp/server"
+	"pinax/internal/preflight"
 )
 
 func main() {
@@ -37,6 +40,10 @@ func main() {
 		err = cmdRemove(rest)
 	case "refresh":
 		err = cmdRefresh(rest)
+	case "search":
+		err = cmdSearch(rest)
+	case "doctor":
+		err = cmdDoctor(rest)
 	case "serve":
 		err = cmdServe(rest)
 	case "cache":
@@ -72,7 +79,9 @@ Usage:
   pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N]
   pinax list
   pinax remove <name>
-  pinax refresh <name>
+  pinax refresh <name> [--rebuild-index]
+  pinax search <name> <query>
+  pinax doctor <name> [--json]
   pinax serve <name> [--http] [--port N]
   pinax cache clear [--older-than DURATION]
   pinax config claude [--project]
@@ -98,7 +107,7 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fmt.Fprintln(w, "Usage: pinax cache clear [flags]")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
-	case "list", "remove", "rm", "refresh", "config":
+	case "list", "remove", "rm", "refresh", "config", "search", "doctor":
 		usage(w)
 	default:
 		fmt.Fprintf(w, "unknown command %q\n\n", cmd)
@@ -113,6 +122,7 @@ type addOpts struct {
 	maxPages    *int
 	concurrency *int
 	excludes    multiString
+	noPreflight *bool
 }
 
 func newAddFlags() (*flag.FlagSet, *addOpts) {
@@ -121,6 +131,7 @@ func newAddFlags() (*flag.FlagSet, *addOpts) {
 		name:        fs.String("name", "", "manifest name (defaults to derived from host)"),
 		maxPages:    fs.Int("max-pages", 0, "override default max pages"),
 		concurrency: fs.Int("concurrency", 0, "override default concurrency"),
+		noPreflight: fs.Bool("no-preflight", false, "skip the content-density check (use only if you know the site works)"),
 	}
 	fs.Var(&o.excludes, "exclude", "URL substring(s) to skip (repeatable)")
 	return fs, o
@@ -158,6 +169,17 @@ func cmdAdd(args []string) error {
 		return fmt.Errorf("crawl: %w", err)
 	}
 	fmt.Printf("discovered %d pages via %s in %s\n", len(res.Pages), res.Source, time.Since(start).Truncate(time.Millisecond))
+
+	if !*o.noPreflight {
+		fmt.Print("running content-density check ... ")
+		rep := preflight.Check(ctx, res.Pages, preflight.Options{})
+		fmt.Printf("sampled %d, mean prose %d chars, mean ratio %.3f\n",
+			rep.SampledTotal, rep.MeanProseLen, rep.MeanRatio)
+		if rep.ShouldRefuse {
+			rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
+			return fmt.Errorf("content-density check failed; manifest not written")
+		}
+	}
 
 	m := manifest.FromCrawlResult(*o.name, res)
 	if err := manifest.Save(m); err != nil {
@@ -203,13 +225,25 @@ func cmdRemove(args []string) error {
 // ---------- refresh ----------
 
 func cmdRefresh(args []string) error {
-	if len(args) < 1 {
+	fs := flag.NewFlagSet("refresh", flag.ContinueOnError)
+	rebuildOnly := fs.Bool("rebuild-index", false, "only rebuild the BM25 index; skip re-crawling")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
 		return fmt.Errorf("refresh: missing <name>")
 	}
-	name := args[0]
+	name := fs.Arg(0)
 	m, err := manifest.Load(name)
 	if err != nil {
 		return err
+	}
+	if *rebuildOnly {
+		if err := manifest.SaveIndex(name, manifest.BuildIndex(m.Pages)); err != nil {
+			return err
+		}
+		fmt.Printf("rebuilt search index for %s (%d pages)\n", name, len(m.Pages))
+		return nil
 	}
 	fmt.Printf("re-crawling %s ...\n", m.BaseURL)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -224,6 +258,93 @@ func cmdRefresh(args []string) error {
 	}
 	fmt.Printf("refreshed %s — %d pages\n", name, len(updated.Pages))
 	return nil
+}
+
+// ---------- search ----------
+
+func cmdSearch(args []string) error {
+	fs := flag.NewFlagSet("search", flag.ContinueOnError)
+	limit := fs.Int("limit", 10, "max results")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 2 {
+		return fmt.Errorf("search: usage: pinax search <name> <query>")
+	}
+	name := fs.Arg(0)
+	query := strings.Join(fs.Args()[1:], " ")
+
+	m, err := manifest.Load(name)
+	if err != nil {
+		return err
+	}
+	idx, err := manifest.LoadIndex(name)
+	if err != nil {
+		if err == manifest.ErrIndexMissing {
+			return fmt.Errorf("no search index for %q — run 'pinax refresh %s --rebuild-index'", name, name)
+		}
+		return err
+	}
+	hits := idx.Search(query, *limit)
+	if len(hits) == 0 {
+		fmt.Println("(no matches)")
+		return nil
+	}
+	for _, h := range hits {
+		if h.DocID < 0 || h.DocID >= len(m.Pages) {
+			continue
+		}
+		p := m.Pages[h.DocID]
+		fmt.Printf("%7.3f  %-40s  %s\n", h.Score, truncate(p.Title, 40), p.URL)
+	}
+	return nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
+// ---------- doctor ----------
+
+func cmdDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "emit JSON suitable for bug reports")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
+		return fmt.Errorf("doctor: missing <name>")
+	}
+	name := fs.Arg(0)
+	m, err := manifest.Load(name)
+	if err != nil {
+		return err
+	}
+	if !*jsonOut {
+		fmt.Fprintf(os.Stderr, "diagnosing %s ...\n", m.BaseURL)
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	rep, err := doctor.Diagnose(ctx, m, buildinfoVersion())
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return rep.FormatJSON(os.Stdout)
+	}
+	rep.FormatText(os.Stdout)
+	if !rep.Healthy {
+		return fmt.Errorf("manifest unhealthy")
+	}
+	return nil
+}
+
+func buildinfoVersion() string {
+	v, _, _ := buildinfo.Resolve()
+	return v
 }
 
 // ---------- serve ----------
@@ -247,13 +368,38 @@ func cmdServe(args []string) error {
 	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		return err
 	}
-	if fs.NArg() < 1 {
-		return fmt.Errorf("serve: missing <name>")
-	}
-	name := fs.Arg(0)
-	m, err := manifest.Load(name)
-	if err != nil {
-		return err
+
+	// Unified mode: no positional arg → expose every manifest under one server.
+	// Legacy mode: `pinax serve <name>` → single-manifest behaviour preserved.
+	unified := fs.NArg() == 0
+
+	var (
+		manifests   map[string]*manifest.Manifest
+		reload      func() (map[string]*manifest.Manifest, error)
+		displayName string
+		labelForUI  string // shown in startup hint/HTTP banner
+		err         error
+	)
+	if unified {
+		manifests, err = manifest.LoadAll()
+		if err != nil {
+			return err
+		}
+		if len(manifests) == 0 {
+			return fmt.Errorf("no docs indexed — run `pinax add <url>` first")
+		}
+		reload = manifest.LoadAll
+		displayName = "pinax"
+		labelForUI = "pinax (unified)"
+	} else {
+		name := fs.Arg(0)
+		m, err := manifest.Load(name)
+		if err != nil {
+			return err
+		}
+		manifests = map[string]*manifest.Manifest{name: m}
+		displayName = "pinax/" + name
+		labelForUI = name
 	}
 
 	pinaxDir, err := pinaxHome()
@@ -271,28 +417,42 @@ func cmdServe(args []string) error {
 	}
 	defer func() { _ = logStore.Close() }()
 
-	mcpSrv := mcpserver.New(m, c, logStore, name)
+	mcpSrv := mcpserver.New(manifests, c, logStore, displayName, reload)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	stdinIsTTY := isTerminal(os.Stdin)
 	if !*o.useHTTP && stdinIsTTY {
-		printConfigHint(name)
+		printConfigHint(unified, labelForUI)
 	}
 
 	if *o.useHTTP {
 		addr := fmt.Sprintf(":%d", *o.port)
-		fmt.Fprintf(os.Stderr, "pinax serving %s on http://localhost%s (POST /mcp, log UI /)\n", name, addr)
+		fmt.Fprintf(os.Stderr, "pinax serving %s on http://localhost%s (POST /mcp, log UI /)\n", labelForUI, addr)
 		return mcpserver.ListenAndServeHTTP(ctx, mcpSrv, logStore, mcpserver.HTTPOptions{Addr: addr})
 	}
 	return mcpserver.ServeStdio(ctx, mcpSrv)
 }
 
-func printConfigHint(name string) {
+func printConfigHint(unified bool, name string) {
 	exe, _ := os.Executable()
 	if exe == "" {
 		exe = "pinax"
+	}
+	if unified {
+		fmt.Fprintf(os.Stderr, `
+pinax is waiting on stdio (unified mode, all docs available via list_docs).
+To use from Claude Desktop, add to your config:
+
+  "mcpServers": {
+    "pinax": { "command": "%s", "args": ["serve"] }
+  }
+
+Or run 'pinax serve --http' for HTTP mode with the log viewer.
+
+`, exe)
+		return
 	}
 	fmt.Fprintf(os.Stderr, `
 pinax is waiting on stdio. To use it from Claude Desktop, add to your config:
@@ -354,18 +514,22 @@ func cmdConfig(args []string) error {
 	switch args[0] {
 	case "claude":
 		project := false
+		split := false
 		for _, a := range args[1:] {
-			if a == "--project" {
+			switch a {
+			case "--project":
 				project = true
+			case "--split":
+				split = true
 			}
 		}
-		return configClaude(project)
+		return configClaude(project, split)
 	default:
 		return fmt.Errorf("config: unknown target %q", args[0])
 	}
 }
 
-func configClaude(project bool) error {
+func configClaude(project, split bool) error {
 	names, err := manifest.List()
 	if err != nil {
 		return err
@@ -380,12 +544,18 @@ func configClaude(project bool) error {
 
 	var sb strings.Builder
 	sb.WriteString("{\n  \"mcpServers\": {\n")
-	for i, n := range names {
-		fmt.Fprintf(&sb, "    %q: { \"command\": %q, \"args\": [\"serve\", %q] }", n, exe, n)
-		if i < len(names)-1 {
-			sb.WriteString(",")
+	if split {
+		// Legacy: one MCP server entry per manifest.
+		for i, n := range names {
+			fmt.Fprintf(&sb, "    %q: { \"command\": %q, \"args\": [\"serve\", %q] }", n, exe, n)
+			if i < len(names)-1 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("\n")
 		}
-		sb.WriteString("\n")
+	} else {
+		// Unified (default): one entry serving every indexed docs site.
+		fmt.Fprintf(&sb, "    \"pinax\": { \"command\": %q, \"args\": [\"serve\"] }\n", exe)
 	}
 	sb.WriteString("  }\n}\n")
 

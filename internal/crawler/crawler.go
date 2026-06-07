@@ -5,9 +5,12 @@ package crawler
 import (
 	"fmt"
 	"time"
+
+	"pinax/internal/buildinfo"
 )
 
-const userAgent = "Pinax/1.0 (+https://pinax.dev/bot)"
+// userAgent is a function so tests can override Version via buildinfo.
+func userAgent() string { return buildinfo.UserAgent() }
 
 // Page is a single documentation URL discovered during crawl.
 type Page struct {

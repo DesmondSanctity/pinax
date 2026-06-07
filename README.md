@@ -72,21 +72,28 @@ make build
 ## Quick start
 
 ```sh
-# 1. Index a docs site (creates ~/.pinax/servers/<name>/manifest.json)
+# 1. Index a docs site (creates ~/.pinax/servers/<name>.json + .bm25 index)
 pinax add https://docs.convex.dev
 
 # 2. List what you've indexed
 pinax list
 
-# 3. Serve it over stdio (what MCP clients launch)
-pinax serve convex-docs
+# 3. Serve every indexed site at once over stdio (what MCP clients launch)
+pinax serve
+# …or pin a single one: pinax serve docs-convex-dev
 
 # Or serve over HTTP with the log viewer
-pinax serve convex-docs --http --port 8423
-# → http://localhost:8423/      (log UI)
+pinax serve --http --port 8423
+# → http://localhost:8423/      (log UI, with per-docs filtering)
 # → http://localhost:8423/mcp   (Streamable HTTP MCP endpoint)
 # → http://localhost:8423/sse   (legacy SSE)
+
+# 4. Check a manifest's health (page-count drift, mean prose, etc.)
+pinax doctor docs-convex-dev
 ```
+
+In unified mode every tool takes an optional `docs` argument to scope to a
+single site; call `list_docs` to see what's loaded.
 
 ### Connect to an MCP client
 
@@ -171,34 +178,43 @@ claude mcp add convex-docs -- pinax serve convex-docs
 ## Commands
 
 ```
-pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N]
+pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N] [--no-preflight]
 pinax list
 pinax remove <name>
-pinax refresh <name>
-pinax serve <name> [--http] [--port N]
+pinax refresh <name> [--rebuild-index]
+pinax search <name> <query>
+pinax doctor [<name>...] [--json]
+pinax serve [<name>] [--http] [--port N]
 pinax cache clear [--older-than DURATION]
 pinax config claude [--project]
 ```
 
-## The four tools
+## The MCP tools
 
-| Tool                | Description                                                                       | Args                              |
-| ------------------- | --------------------------------------------------------------------------------- | --------------------------------- |
-| `list_sections`     | URL paths grouped by top-level section, with page counts                          | none                              |
-| `search_pages`      | Natural-language token search over URL paths and titles, with fuzzy typo fallback | `query: string`, `limit?: number` |
-| `get_section_pages` | All pages under a section prefix                                                  | `section: string`                 |
-| `get_page`          | Live-fetch a page; returns clean extracted Markdown                               | `url: string`                     |
+Every tool accepts an optional `docs` argument that scopes the call to a
+single manifest when the unified server is hosting more than one.
+
+| Tool                | Description                                                            | Args                                              |
+| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `list_docs`         | Names, base URLs and page counts of every loaded manifest              | none                                              |
+| `list_sections`     | URL paths grouped by top-level section, with page counts               | `docs?: string`                                   |
+| `search_pages`      | BM25 ranked search over URL paths, titles and section names, with substring + fuzzy fallback | `query: string`, `limit?: number`, `docs?: string` |
+| `get_section_pages` | All pages under a section prefix                                       | `section: string`, `docs?: string`                |
+| `get_page`          | Live-fetch a page; returns clean extracted Markdown                    | `url: string`                                     |
 
 ## Project layout
 
 ```
-cmd/pinax/       CLI entry point and argument parser
-internal/crawler/ Discovery: llms.txt probe, sitemap parser, BFS, platform detection
+cmd/pinax/        CLI entry point and argument parser
+internal/buildinfo/ Version/User-Agent shared across CLI and MCP server
+internal/crawler/   Discovery: llms.txt probe, sitemap parser, BFS, platform detection
 internal/extractor/ HTML/Markdown → clean Markdown
-internal/manifest/ Atomic JSON manifests in ~/.pinax/servers/
-internal/cache/    SQLite page cache (WAL, TTL applied at read time)
-internal/logger/   SQLite tool-call log store and the HTML log viewer
-internal/mcp/      MCP server, transport (stdio + Streamable HTTP + SSE), tools, middleware
+internal/manifest/  Atomic JSON manifests + BM25 indexes in ~/.pinax/servers/
+internal/cache/     SQLite page cache (WAL, TTL applied at read time)
+internal/logger/    SQLite tool-call log store and the HTML log viewer
+internal/mcp/       Unified MCP server, transport (stdio + Streamable HTTP + SSE), tools, middleware
+internal/preflight/ Content-density check that gates `pinax add`
+internal/doctor/    Health diagnosis used by `pinax doctor`
 ```
 
 ## Development
@@ -220,7 +236,8 @@ make test-integration # build-tag-gated network tests
   content will produce thin pages.
 - `search_pages` is a token-AND substring match with a fuzzy fallback for
   typos.
-- No scheduled re-crawl — use `pinax refresh <name>`.
+- No scheduled re-crawl — use `pinax refresh <name>`, and `pinax doctor`
+  to detect drift.
 - No authentication for private docs.
 
 ## Contributing

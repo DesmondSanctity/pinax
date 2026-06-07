@@ -147,7 +147,7 @@ func (c *bfs) fetch(ctx context.Context, pageURL string) (*Page, []string, error
 	if err != nil {
 		return nil, nil, err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", userAgent())
 	req.Header.Set("Accept", "text/markdown, text/html;q=0.9, */*;q=0.8")
 
 	client := &http.Client{

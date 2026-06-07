@@ -63,7 +63,7 @@ func TestListSections_GroupsByCategory(t *testing.T) {
 		crawler.Page{URL: "https://e.com/functions/query", Title: "Query", Section: "functions"},
 		crawler.Page{URL: "https://e.com/functions/mutation", Title: "Mutation", Section: "functions"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 	res := callTool(t, d.ListSections, "list_sections", nil)
 
 	var out []tools.SectionSummary
@@ -88,7 +88,7 @@ func TestSearchPages_FuzzyMatch(t *testing.T) {
 		crawler.Page{URL: "https://e.com/functions/mutation", Title: "Mutations"},
 		crawler.Page{URL: "https://e.com/auth/setup", Title: "Auth Setup"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "query"})
 
 	var hits []tools.SearchHit
@@ -101,7 +101,7 @@ func TestSearchPages_FuzzyMatch(t *testing.T) {
 }
 
 func TestSearchPages_EmptyQueryErrors(t *testing.T) {
-	d := tools.New(testManifest(), nil)
+	d := tools.NewSingle(testManifest(), nil)
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "  "})
 	if !res.IsError {
 		t.Error("expected error result for blank query")
@@ -115,7 +115,7 @@ func TestSearchPages_NaturalLanguageQuery(t *testing.T) {
 		crawler.Page{URL: "https://e.com/docs/api-reference/emails/send", Title: "Send Email", Section: "api-reference"},
 		crawler.Page{URL: "https://e.com/docs/dashboard/billing", Title: "Billing", Section: "dashboard"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "api keys create"})
 	var hits []tools.SearchHit
@@ -142,7 +142,7 @@ func TestSearchPages_AllTokensRequired(t *testing.T) {
 		crawler.Page{URL: "https://e.com/auth/logout", Title: "Logout"},
 		crawler.Page{URL: "https://e.com/billing/invoices", Title: "Invoices"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "auth invoices"})
 	var hits []tools.SearchHit
 	_ = json.Unmarshal([]byte(toolText(t, res)), &hits)
@@ -156,7 +156,7 @@ func TestSearchPages_TypoFallback(t *testing.T) {
 		crawler.Page{URL: "https://e.com/functions/mutation", Title: "Mutations"},
 		crawler.Page{URL: "https://e.com/auth/setup", Title: "Auth Setup"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 	// "mutatons" (typo, missing 'i') is not a substring of any haystack but
 	// fuzzy.MatchFold should still locate it.
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "mutatons"})
@@ -174,7 +174,7 @@ func TestSearchPages_RespectsLimit(t *testing.T) {
 	for i := range pages {
 		pages[i] = crawler.Page{URL: "https://e.com/p", Title: "page"}
 	}
-	d := tools.New(testManifest(pages...), nil)
+	d := tools.NewSingle(testManifest(pages...), nil)
 	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "page", "limit": float64(3)})
 	var hits []tools.SearchHit
 	_ = json.Unmarshal([]byte(toolText(t, res)), &hits)
@@ -191,7 +191,7 @@ func TestGetSectionPages_FiltersBySection(t *testing.T) {
 		crawler.Page{URL: "https://e.com/a/2", Section: "a"},
 		crawler.Page{URL: "https://e.com/b/1", Section: "b"},
 	)
-	d := tools.New(m, nil)
+	d := tools.NewSingle(m, nil)
 	res := callTool(t, d.GetSectionPages, "get_section_pages", map[string]any{"section": "a"})
 	var hits []tools.SearchHit
 	_ = json.Unmarshal([]byte(toolText(t, res)), &hits)
@@ -201,7 +201,7 @@ func TestGetSectionPages_FiltersBySection(t *testing.T) {
 }
 
 func TestGetSectionPages_UnknownSectionErrors(t *testing.T) {
-	d := tools.New(testManifest(), nil)
+	d := tools.NewSingle(testManifest(), nil)
 	res := callTool(t, d.GetSectionPages, "get_section_pages", map[string]any{"section": "nope"})
 	if !res.IsError {
 		t.Error("expected error for unknown section")
@@ -220,7 +220,7 @@ func TestGetPage_FetchesAndCaches(t *testing.T) {
 	defer srv.Close()
 
 	c := openCache(t)
-	d := tools.New(testManifest(), c)
+	d := tools.NewSingle(testManifest(), c)
 	d.HTTP = srv.Client()
 
 	res := callTool(t, d.GetPage, "get_page", map[string]any{"url": srv.URL + "/p"})
@@ -243,7 +243,7 @@ func TestGetPage_404ReturnsStructuredError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	d := tools.New(testManifest(), openCache(t))
+	d := tools.NewSingle(testManifest(), openCache(t))
 	d.HTTP = srv.Client()
 	res := callTool(t, d.GetPage, "get_page", map[string]any{"url": srv.URL + "/missing"})
 	if !res.IsError {
@@ -262,9 +262,183 @@ func TestGetPage_404ReturnsStructuredError(t *testing.T) {
 }
 
 func TestGetPage_RequiresURL(t *testing.T) {
-	d := tools.New(testManifest(), nil)
+	d := tools.NewSingle(testManifest(), nil)
 	res := callTool(t, d.GetPage, "get_page", nil)
 	if !res.IsError {
 		t.Error("expected error when url missing")
+	}
+}
+
+// ---- unified mode (multi-manifest routing) ----
+
+func multiManifests() map[string]*manifest.Manifest {
+	return map[string]*manifest.Manifest{
+		"alpha": {Name: "alpha", BaseURL: "https://alpha.dev", Pages: []crawler.Page{
+			{URL: "https://alpha.dev/intro", Title: "Alpha Intro", Section: "/"},
+			{URL: "https://alpha.dev/api/auth", Title: "Alpha Auth", Section: "api"},
+		}},
+		"beta": {Name: "beta", BaseURL: "https://beta.dev", Pages: []crawler.Page{
+			{URL: "https://beta.dev/start", Title: "Beta Start", Section: "/"},
+		}},
+	}
+}
+
+func TestUnified_ListDocsReturnsAll(t *testing.T) {
+	d := tools.New(multiManifests(), nil)
+	res := callTool(t, d.ListDocs, "list_docs", nil)
+	if res.IsError {
+		t.Fatalf("list_docs errored: %s", toolText(t, res))
+	}
+	var out []tools.DocSummary
+	if err := json.Unmarshal([]byte(toolText(t, res)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("want 2 docs, got %d", len(out))
+	}
+	// sortedNames orders alphabetically
+	if out[0].Name != "alpha" || out[1].Name != "beta" {
+		t.Errorf("unexpected order: %+v", out)
+	}
+	if out[0].PageCount != 2 {
+		t.Errorf("alpha pageCount = %d, want 2", out[0].PageCount)
+	}
+}
+
+func TestUnified_MissingDocsArgErrors(t *testing.T) {
+	d := tools.New(multiManifests(), nil)
+	res := callTool(t, d.ListSections, "list_sections", nil)
+	if !res.IsError {
+		t.Fatal("expected error when docs arg missing in multi-manifest mode")
+	}
+	msg := toolText(t, res)
+	if !strings.Contains(msg, "alpha") || !strings.Contains(msg, "beta") {
+		t.Errorf("error should list available docs: %s", msg)
+	}
+}
+
+func TestUnified_UnknownDocsErrors(t *testing.T) {
+	d := tools.New(multiManifests(), nil)
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{
+		"query": "intro",
+		"docs":  "gamma",
+	})
+	if !res.IsError {
+		t.Fatal("expected error for unknown docs")
+	}
+	if !strings.Contains(toolText(t, res), "not found") {
+		t.Errorf("expected 'not found': %s", toolText(t, res))
+	}
+}
+
+func TestUnified_RoutesToCorrectManifest(t *testing.T) {
+	d := tools.New(multiManifests(), nil)
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{
+		"query": "start",
+		"docs":  "beta",
+	})
+	if res.IsError {
+		t.Fatalf("search_pages errored: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || !strings.Contains(hits[0].URL, "beta.dev") {
+		t.Errorf("expected beta.dev hit, got %+v", hits)
+	}
+}
+
+func TestUnified_SingleManifestNoDocsArgWorks(t *testing.T) {
+	// Single-entry map should permit omitting `docs`.
+	d := tools.New(map[string]*manifest.Manifest{"only": {
+		Name:    "only",
+		BaseURL: "https://only.dev",
+		Pages:   []crawler.Page{{URL: "https://only.dev/x", Title: "X", Section: "/"}},
+	}}, nil)
+	res := callTool(t, d.ListSections, "list_sections", nil)
+	if res.IsError {
+		t.Fatalf("expected no error in single-manifest mode: %s", toolText(t, res))
+	}
+}
+
+func TestUnified_ReloadHookPicksUpNewManifest(t *testing.T) {
+	state := multiManifests()
+	d := tools.New(state, nil)
+	d.Reload = func() (map[string]*manifest.Manifest, error) { return state, nil }
+
+	// Initially gamma is unknown.
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{
+		"query": "hello",
+		"docs":  "gamma",
+	})
+	if !res.IsError {
+		t.Fatal("expected error before reload")
+	}
+
+	// Hot-add gamma; next call should resolve it.
+	state["gamma"] = &manifest.Manifest{Name: "gamma", BaseURL: "https://gamma.dev", Pages: []crawler.Page{
+		{URL: "https://gamma.dev/hello", Title: "Hello", Section: "/"},
+	}}
+	res = callTool(t, d.SearchPages, "search_pages", map[string]any{
+		"query": "hello",
+		"docs":  "gamma",
+	})
+	if res.IsError {
+		t.Fatalf("expected gamma to resolve after reload: %s", toolText(t, res))
+	}
+}
+
+// ---- BM25 integration ----
+
+func TestSearchPages_UsesBM25WhenIndexPresent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	m := &manifest.Manifest{
+		Name:    "bm25test",
+		BaseURL: "https://x.com",
+		Pages: []crawler.Page{
+			{URL: "https://x.com/auth", Title: "Auth Overview", Section: "/"},
+			{URL: "https://x.com/auth/login", Title: "Login", Section: "auth"},
+		},
+	}
+	if err := manifest.Save(m); err != nil {
+		t.Fatal(err)
+	}
+	// Reload to pick up index path resolution via HOME.
+	loaded, err := manifest.Load("bm25test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := tools.NewSingle(loaded, nil)
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "login"})
+	if res.IsError {
+		t.Fatalf("search errored: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || hits[0].Title != "Login" {
+		t.Errorf("BM25 should rank Login first, got %+v", hits)
+	}
+}
+
+func TestSearchPages_FallsBackToFuzzyWhenIndexMissing(t *testing.T) {
+	// Build a manifest in-memory (no Save → no .bm25 on disk).
+	m := testManifest(
+		crawler.Page{URL: "https://e.com/api/login", Title: "Login API"},
+	)
+	d := tools.NewSingle(m, nil)
+	// Misspelling — only fuzzy path can find this.
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "logn"})
+	if res.IsError {
+		t.Fatalf("fuzzy fallback errored: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Error("expected fuzzy fallback to match 'logn' against 'Login API'")
 	}
 }

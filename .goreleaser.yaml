@@ -21,9 +21,9 @@ builds:
     - -trimpath
    ldflags:
     - -s -w
-    - -X main.version={{ .Version }}
-    - -X main.commit={{ .Commit }}
-    - -X main.date={{ .Date }}
+    - -X pinax/internal/buildinfo.Version={{ .Version }}
+    - -X pinax/internal/buildinfo.Commit={{ .Commit }}
+    - -X pinax/internal/buildinfo.Date={{ .Date }}
 
 archives:
  - id: default

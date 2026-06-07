@@ -35,6 +35,7 @@ func (s *Store) handleList(w http.ResponseWriter, r *http.Request) {
 		Server: strings.TrimSpace(q.Get("server")),
 		Tool:   strings.TrimSpace(q.Get("tool")),
 		Status: strings.TrimSpace(q.Get("status")),
+		Docs:   strings.TrimSpace(q.Get("docs")),
 	}))
 }
 
@@ -92,18 +93,20 @@ const uiHTML = `<!doctype html>
   <label>server <select id="f-server"><option value="">all</option></select></label>
   <label>status <select id="f-status"><option value="">all</option><option>ok</option><option>error</option></select></label>
   <label>tool <input id="f-tool" placeholder="any" size="14"></label>
+  <label>docs <input id="f-docs" placeholder="any" size="14"></label>
   <button id="refresh">refresh</button>
   <button id="clear">clear all</button>
   <span class="muted" id="meta"></span>
 </header>
 <table>
-  <thead><tr><th>time</th><th>server</th><th>tool</th><th>status</th><th>ms</th><th>preview</th></tr></thead>
+  <thead><tr><th>time</th><th>server</th><th>docs</th><th>tool</th><th>status</th><th>ms</th><th>preview</th></tr></thead>
   <tbody id="rows"></tbody>
 </table>
 <script>
 const fServer = document.getElementById('f-server');
 const fStatus = document.getElementById('f-status');
 const fTool   = document.getElementById('f-tool');
+const fDocs   = document.getElementById('f-docs');
 const rows    = document.getElementById('rows');
 const meta    = document.getElementById('meta');
 let expanded = new Set();
@@ -120,6 +123,7 @@ async function load() {
   if (fServer.value) params.set('server', fServer.value);
   if (fStatus.value) params.set('status', fStatus.value);
   if (fTool.value)   params.set('tool', fTool.value);
+  if (fDocs.value)   params.set('docs', fDocs.value);
   const r = await fetch('/api/logs?' + params);
   const data = await r.json() || [];
   meta.textContent = data.length + ' entries';
@@ -129,12 +133,13 @@ async function load() {
     const main = '<tr class="row" data-id="'+e.id+'">'
        + '<td>'+time+'</td>'
        + '<td>'+esc(e.serverName)+'</td>'
+       + '<td>'+esc(e.docs||'')+'</td>'
        + '<td>'+esc(e.toolName)+'</td>'
        + '<td class="'+cls+'">'+e.status+'</td>'
        + '<td>'+e.durationMs+'</td>'
        + '<td>'+esc(e.resultPreview)+'</td></tr>';
     if (!expanded.has(e.id)) return main;
-    return main + '<tr class="detail"><td colspan="6">'
+    return main + '<tr class="detail"><td colspan="7">'
        + '<pre>arguments: '+esc(e.arguments)+'</pre>'
        + (e.error ? '<pre class="error">error: '+esc(e.error)+'</pre>' : '')
        + '<pre>result: '+esc(e.resultPreview)+'</pre></td></tr>';
@@ -154,8 +159,9 @@ document.getElementById('clear').onclick = async () => {
   expanded.clear();
   load();
 };
-for (const el of [fServer, fStatus, fTool]) el.addEventListener('change', load);
+for (const el of [fServer, fStatus, fTool, fDocs]) el.addEventListener('change', load);
 fTool.addEventListener('input', load);
+fDocs.addEventListener('input', load);
 loadServers().then(load);
 setInterval(() => { loadServers(); load(); }, 3000);
 </script>

@@ -48,7 +48,7 @@ func fetchAndParseSitemap(ctx context.Context, sitemapURL, baseURL string) ([]Pa
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", userAgent())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

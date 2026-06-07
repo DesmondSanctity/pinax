@@ -111,3 +111,27 @@ func TestLogging_TruncatesPreview(t *testing.T) {
 		t.Errorf("preview not truncated: len=%d", len(entries[0].ResultPreview))
 	}
 }
+
+func TestLogging_CapturesDocsArg(t *testing.T) {
+	s := openStore(t)
+	h := middleware.WithLogging(s, "pinax", successHandler)
+	args := map[string]any{"docs": "alpha", "query": "intro"}
+	if _, err := h(context.Background(), testRequest("search_pages", args)); err != nil {
+		t.Fatal(err)
+	}
+	entries := s.List(logger.ListParams{})
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0].Docs != "alpha" {
+		t.Errorf("Docs field = %q, want alpha", entries[0].Docs)
+	}
+	// Filter by docs
+	filtered := s.List(logger.ListParams{Docs: "alpha"})
+	if len(filtered) != 1 {
+		t.Errorf("docs filter returned %d entries, want 1", len(filtered))
+	}
+	if len(s.List(logger.ListParams{Docs: "beta"})) != 0 {
+		t.Error("docs=beta filter should match nothing")
+	}
+}

@@ -1,10 +1,11 @@
-// Package tools implements the four MCP tools exposed by pinax:
-// list_sections, search_pages, get_section_pages, and get_page.
+// Package tools implements the MCP tools exposed by pinax:
+// list_docs, list_sections, search_pages, get_section_pages, and get_page.
 package tools
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpsrv "github.com/mark3labs/mcp-go/server"
 
+	"pinax/internal/buildinfo"
 	"pinax/internal/cache"
 	"pinax/internal/crawler"
 	"pinax/internal/extractor"
@@ -24,10 +26,31 @@ import (
 )
 
 // Deps wires the runtime resources the tool handlers need.
+//
+// A single Deps instance serves one of two modes:
+//   - **Single-manifest** (legacy `pinax serve <name>`): Manifests has exactly
+//     one entry and the `docs` argument is optional.
+//   - **Unified** (`pinax serve` with no positional arg): Manifests holds every
+//     server on disk; tools require `docs` to disambiguate. The `Reload` hook
+//     is called at the start of each routing tool so newly-added manifests
+//     appear without a server restart.
 type Deps struct {
-	Manifest *manifest.Manifest
-	Cache    *cache.PageCache
-	HTTP     *http.Client
+	Cache *cache.PageCache
+	HTTP  *http.Client
+
+	// Reload, if non-nil, replaces Manifests on every routing call. Cheap —
+	// manifests are tiny JSON files. Set by the server constructor in unified
+	// mode; left nil in legacy single-manifest mode.
+	Reload func() (map[string]*manifest.Manifest, error)
+
+	mu        sync.RWMutex
+	manifests map[string]*manifest.Manifest
+
+	// indexMu protects the per-manifest BM25 index cache. Keyed by the
+	// *manifest.Manifest pointer so stale entries fall out automatically when
+	// Reload swaps in a fresh map.
+	indexMu    sync.Mutex
+	indexCache map[*manifest.Manifest]*manifest.Index
 
 	// sessionMu protects sessionCache for concurrent tool calls within a single
 	// running server process.
@@ -35,14 +58,127 @@ type Deps struct {
 	sessionCache map[string]string
 }
 
-// New wires up dependencies, applying defaults.
-func New(m *manifest.Manifest, c *cache.PageCache) *Deps {
+// New wires up dependencies, applying defaults. For the legacy single-manifest
+// mode pass exactly one entry in manifests.
+func New(manifests map[string]*manifest.Manifest, c *cache.PageCache) *Deps {
+	if manifests == nil {
+		manifests = map[string]*manifest.Manifest{}
+	}
 	return &Deps{
-		Manifest:     m,
+		manifests:    manifests,
 		Cache:        c,
 		HTTP:         &http.Client{Timeout: 30 * time.Second},
+		indexCache:   make(map[*manifest.Manifest]*manifest.Index),
 		sessionCache: make(map[string]string),
 	}
+}
+
+// NewSingle is a convenience constructor for legacy single-manifest mode.
+func NewSingle(m *manifest.Manifest, c *cache.PageCache) *Deps {
+	return New(map[string]*manifest.Manifest{m.Name: m}, c)
+}
+
+// Manifests returns the current snapshot (after a refresh if Reload is set).
+func (d *Deps) Manifests() map[string]*manifest.Manifest {
+	d.refresh()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	out := make(map[string]*manifest.Manifest, len(d.manifests))
+	for k, v := range d.manifests {
+		out[k] = v
+	}
+	return out
+}
+
+// refresh re-loads manifests from disk if a Reload hook is configured. Errors
+// during refresh are ignored: we keep serving the last good snapshot.
+func (d *Deps) refresh() {
+	if d.Reload == nil {
+		return
+	}
+	fresh, err := d.Reload()
+	if err != nil || fresh == nil {
+		return
+	}
+	d.mu.Lock()
+	d.manifests = fresh
+	d.mu.Unlock()
+}
+
+// resolve picks the manifest for a tool call. In single-manifest mode `docs`
+// may be empty. Otherwise it must match an available name.
+func (d *Deps) resolve(docs string) (*manifest.Manifest, error) {
+	d.refresh()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	switch {
+	case docs != "":
+		m, ok := d.manifests[docs]
+		if !ok {
+			return nil, fmt.Errorf("docs %q not found (available: %s)", docs, strings.Join(sortedNames(d.manifests), ", "))
+		}
+		return m, nil
+	case len(d.manifests) == 1:
+		for _, m := range d.manifests {
+			return m, nil
+		}
+	}
+	names := sortedNames(d.manifests)
+	if len(names) == 0 {
+		return nil, errors.New("no docs available — run `pinax add <url>` first")
+	}
+	return nil, fmt.Errorf("specify `docs` (available: %s)", strings.Join(names, ", "))
+}
+
+func sortedNames(m map[string]*manifest.Manifest) []string {
+	names := make([]string, 0, len(m))
+	for k := range m {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// docsArg extracts the optional `docs` argument.
+func docsArg(req mcp.CallToolRequest) string {
+	return strings.TrimSpace(req.GetString("docs", ""))
+}
+
+// ---------- list_docs ----------
+
+// DocSummary describes one indexed docs server.
+type DocSummary struct {
+	Name      string `json:"name"`
+	BaseURL   string `json:"baseUrl"`
+	PageCount int    `json:"pageCount"`
+	Platform  string `json:"platform,omitempty"`
+}
+
+// ListDocsTool returns the tool spec for list_docs.
+func ListDocsTool() mcp.Tool {
+	return mcp.NewTool("list_docs",
+		mcp.WithDescription(
+			"List every documentation site indexed in this Pinax instance. Call "+
+				"this first to discover available `docs` values for the other tools. "+
+				"In single-docs mode this returns a one-entry list.",
+		),
+	)
+}
+
+// ListDocs handler.
+func (d *Deps) ListDocs(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	ms := d.Manifests()
+	out := make([]DocSummary, 0, len(ms))
+	for _, name := range sortedNames(ms) {
+		m := ms[name]
+		out = append(out, DocSummary{
+			Name:      m.Name,
+			BaseURL:   m.BaseURL,
+			PageCount: len(m.Pages),
+			Platform:  m.Platform,
+		})
+	}
+	return jsonResult(out)
 }
 
 // ---------- list_sections ----------
@@ -59,16 +195,21 @@ func ListSectionsTool() mcp.Tool {
 	return mcp.NewTool("list_sections",
 		mcp.WithDescription(
 			"List the high-level documentation sections (categories) available "+
-				"for this server, with a sample of pages per section. Call this "+
-				"first to get an overview of what's available.",
+				"for one indexed docs site, with a sample of pages per section. "+
+				"Call this first to get an overview of what's available.",
 		),
+		mcp.WithString("docs", mcp.Description("Docs name from list_docs. Omit when only one site is indexed.")),
 	)
 }
 
 // ListSections handles the list_sections call.
-func (d *Deps) ListSections(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (d *Deps) ListSections(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	m, err := d.resolve(docsArg(req))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	groups := map[string][]crawler.Page{}
-	for _, p := range d.Manifest.Pages {
+	for _, p := range m.Pages {
 		section := p.Section
 		if section == "" {
 			section = "/"
@@ -107,12 +248,17 @@ func SearchPagesTool() mcp.Tool {
 				"feature, API, or concept.",
 		),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Search text")),
+		mcp.WithString("docs", mcp.Description("Docs name from list_docs. Omit when only one site is indexed.")),
 		mcp.WithNumber("limit", mcp.Description("Max results, default 50")),
 	)
 }
 
 // SearchPages handler.
 func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	m, err := d.resolve(docsArg(req))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	q, err := req.RequireString("query")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -126,6 +272,12 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		limit = 50
 	}
 
+	// Try BM25 first. Falls through to the legacy substring/fuzzy pipeline
+	// when the index is missing (pre-v0.2 manifest) or returns zero hits.
+	if bm25Hits := d.bm25Search(m, q, limit); len(bm25Hits) > 0 {
+		return jsonResult(bm25Hits)
+	}
+
 	tokens := strings.Fields(strings.ToLower(q))
 
 	type scored struct {
@@ -133,7 +285,7 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		score int
 	}
 	var matches []scored
-	for _, p := range d.Manifest.Pages {
+	for _, p := range m.Pages {
 		// Normalize separators so multi-token queries match against URL paths
 		// like /api-reference/api-keys/create-api-key.
 		haystack := normalizeHaystack(p.URL + " " + p.Title)
@@ -146,7 +298,7 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	// Typo tolerance fallback: if every token had to substring-match and we got
 	// nothing, retry with a fuzzy pass.
 	if len(matches) == 0 {
-		for _, p := range d.Manifest.Pages {
+		for _, p := range m.Pages {
 			haystack := normalizeHaystack(p.URL + " " + p.Title)
 			score, ok := fuzzyScoreTokens(tokens, haystack)
 			if !ok {
@@ -165,6 +317,57 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		hits[i] = SearchHit{URL: m.page.URL, Title: m.page.Title, Section: m.page.Section}
 	}
 	return jsonResult(hits)
+}
+
+// bm25Search runs the BM25 ranker for q against m and returns SearchHits.
+// Returns nil when the index is missing, stale, or has no matches — the
+// caller then falls back to the legacy substring/fuzzy pipeline.
+func (d *Deps) bm25Search(m *manifest.Manifest, q string, limit int) []SearchHit {
+	idx := d.loadIndex(m)
+	if idx == nil {
+		return nil
+	}
+	hits := idx.Search(q, limit)
+	if len(hits) == 0 {
+		return nil
+	}
+	out := make([]SearchHit, 0, len(hits))
+	for _, h := range hits {
+		if h.DocID < 0 || h.DocID >= len(m.Pages) {
+			continue
+		}
+		p := m.Pages[h.DocID]
+		out = append(out, SearchHit{URL: p.URL, Title: p.Title, Section: p.Section})
+	}
+	return out
+}
+
+// loadIndex returns the BM25 index for m, lazily reading it from disk and
+// caching it keyed by *Manifest pointer (so Reload-swapped manifests
+// invalidate naturally). Returns nil when no usable index exists.
+func (d *Deps) loadIndex(m *manifest.Manifest) *manifest.Index {
+	if m == nil {
+		return nil
+	}
+	d.indexMu.Lock()
+	if idx, ok := d.indexCache[m]; ok {
+		d.indexMu.Unlock()
+		return idx
+	}
+	d.indexMu.Unlock()
+
+	idx, err := manifest.LoadIndex(m.Name)
+	if err != nil {
+		return nil
+	}
+
+	d.indexMu.Lock()
+	if d.indexCache == nil {
+		d.indexCache = make(map[*manifest.Manifest]*manifest.Index)
+	}
+	d.indexCache[m] = idx
+	d.indexMu.Unlock()
+	return idx
 }
 
 // scoreTokens requires every token to appear as a substring of haystack.
@@ -234,17 +437,22 @@ func GetSectionPagesTool() mcp.Tool {
 				"list_sections to drill into one category.",
 		),
 		mcp.WithString("section", mcp.Required(), mcp.Description("Section name from list_sections")),
+		mcp.WithString("docs", mcp.Description("Docs name from list_docs. Omit when only one site is indexed.")),
 	)
 }
 
 // GetSectionPages handler.
 func (d *Deps) GetSectionPages(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	m, err := d.resolve(docsArg(req))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	section, err := req.RequireString("section")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	var out []SearchHit
-	for _, p := range d.Manifest.Pages {
+	for _, p := range m.Pages {
 		if p.Section == section || (section == "/" && p.Section == "") {
 			out = append(out, SearchHit{URL: p.URL, Title: p.Title, Section: p.Section})
 		}
@@ -305,7 +513,7 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Accept", "text/markdown, text/html;q=0.9, */*;q=0.8")
-	req.Header.Set("User-Agent", "pinax/1.0")
+	req.Header.Set("User-Agent", buildinfo.UserAgent())
 
 	resp, err := d.HTTP.Do(req)
 	if err != nil {
@@ -386,12 +594,13 @@ func errAs(err error, target any) bool {
 
 // ---------- Register ----------
 
-// Register adds all four tools to s, wrapping each handler with the supplied
+// Register adds all tools to s, wrapping each handler with the supplied
 // middleware (typically logging).
 func (d *Deps) Register(s *mcpsrv.MCPServer, wrap func(mcpsrv.ToolHandlerFunc) mcpsrv.ToolHandlerFunc) {
 	if wrap == nil {
 		wrap = func(h mcpsrv.ToolHandlerFunc) mcpsrv.ToolHandlerFunc { return h }
 	}
+	s.AddTool(ListDocsTool(), wrap(d.ListDocs))
 	s.AddTool(ListSectionsTool(), wrap(d.ListSections))
 	s.AddTool(SearchPagesTool(), wrap(d.SearchPages))
 	s.AddTool(GetSectionPagesTool(), wrap(d.GetSectionPages))

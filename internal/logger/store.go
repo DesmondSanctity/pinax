@@ -19,6 +19,7 @@ import (
 type Entry struct {
 	ID            string    `json:"id"`
 	ServerName    string    `json:"serverName"`
+	Docs          string    `json:"docs,omitempty"`
 	ToolName      string    `json:"toolName"`
 	Arguments     string    `json:"arguments"`
 	ResultPreview string    `json:"resultPreview"`
@@ -32,6 +33,7 @@ type Entry struct {
 type ListParams struct {
 	Limit  int
 	Server string
+	Docs   string
 	Tool   string
 	Status string
 }
@@ -75,7 +77,38 @@ func Open(dbPath string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("log store: schema: %w", err)
 	}
+	// Additive migration for v0.2 unified-server `docs` field. ADD COLUMN is
+	// idempotent only via probe; check the column list first.
+	if err := ensureDocsColumn(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("log store: migrate: %w", err)
+	}
 	return &Store{db: db}, nil
+}
+
+func ensureDocsColumn(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(tool_calls)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "docs" {
+			return nil
+		}
+	}
+	if _, err := db.Exec(`ALTER TABLE tool_calls ADD COLUMN docs TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS tool_calls_docs_idx ON tool_calls (docs)`)
+	return err
 }
 
 // Close shuts down the async writer (if any) and the underlying database.
@@ -101,9 +134,9 @@ func (s *Store) InsertSync(e Entry) error {
 	}
 	_, err := s.db.Exec(`
         INSERT INTO tool_calls
-            (id, server_name, tool_name, arguments, result_preview, status, error, duration_ms, called_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, e.ID, e.ServerName, e.ToolName, e.Arguments, e.ResultPreview, e.Status, nullIfEmpty(e.Error), e.DurationMs, e.CalledAt.UnixMilli())
+            (id, server_name, docs, tool_name, arguments, result_preview, status, error, duration_ms, called_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, e.ID, e.ServerName, e.Docs, e.ToolName, e.Arguments, e.ResultPreview, e.Status, nullIfEmpty(e.Error), e.DurationMs, e.CalledAt.UnixMilli())
 	return err
 }
 
@@ -149,6 +182,10 @@ func (s *Store) List(p ListParams) []Entry {
 		conds = append(conds, "server_name = ?")
 		args = append(args, p.Server)
 	}
+	if p.Docs != "" {
+		conds = append(conds, "docs = ?")
+		args = append(args, p.Docs)
+	}
 	if p.Tool != "" {
 		conds = append(conds, "tool_name = ?")
 		args = append(args, p.Tool)
@@ -167,7 +204,7 @@ func (s *Store) List(p ListParams) []Entry {
 	// values bind through ? placeholders, so this concat is safe.
 	// gosec G202 is excluded for this file in .golangci.yml.
 	query := `
-        SELECT id, server_name, tool_name, arguments, result_preview,
+        SELECT id, server_name, docs, tool_name, arguments, result_preview,
                status, COALESCE(error, ''), duration_ms, called_at
         FROM tool_calls` + where + `
         ORDER BY called_at DESC
@@ -182,7 +219,7 @@ func (s *Store) List(p ListParams) []Entry {
 	for rows.Next() {
 		var e Entry
 		var calledAtMs int64
-		if err := rows.Scan(&e.ID, &e.ServerName, &e.ToolName, &e.Arguments,
+		if err := rows.Scan(&e.ID, &e.ServerName, &e.Docs, &e.ToolName, &e.Arguments,
 			&e.ResultPreview, &e.Status, &e.Error, &e.DurationMs, &calledAtMs); err != nil {
 			continue
 		}

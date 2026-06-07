@@ -29,6 +29,7 @@ func WithLogging(store *logger.Store, serverName string, handler server.ToolHand
 		entry := logger.Entry{
 			ServerName: serverName,
 			ToolName:   req.Params.Name,
+			Docs:       docsArg(req.GetArguments()),
 			Arguments:  marshalArgs(req.GetArguments()),
 			DurationMs: duration.Milliseconds(),
 			CalledAt:   start.UTC(),
@@ -63,6 +64,16 @@ func marshalArgs(args map[string]any) string {
 		return "{}"
 	}
 	return string(b)
+}
+
+// docsArg extracts the optional `docs` argument for logging.
+func docsArg(args map[string]any) string {
+	v, ok := args["docs"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
 }
 
 func previewOf(res *mcp.CallToolResult) string {

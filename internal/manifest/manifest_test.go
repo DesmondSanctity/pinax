@@ -102,3 +102,37 @@ func TestManifest_InvalidName(t *testing.T) {
 		}
 	}
 }
+
+func TestManifest_LoadAll(t *testing.T) {
+	withHome(t)
+	for _, n := range []string{"alpha", "beta"} {
+		if err := manifest.Save(&manifest.Manifest{
+			Name:    n,
+			BaseURL: "https://" + n + ".dev",
+			Pages:   []crawler.Page{{URL: "https://" + n + ".dev/x"}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	all, err := manifest.LoadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("want 2 manifests, got %d", len(all))
+	}
+	if all["alpha"].BaseURL != "https://alpha.dev" {
+		t.Errorf("alpha BaseURL wrong: %+v", all["alpha"])
+	}
+}
+
+func TestManifest_LoadAllEmpty(t *testing.T) {
+	withHome(t)
+	all, err := manifest.LoadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 0 {
+		t.Errorf("want empty map, got %d entries", len(all))
+	}
+}

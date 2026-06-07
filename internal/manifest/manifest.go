@@ -76,7 +76,16 @@ func Save(m *Manifest) error {
 		_ = os.Remove(tmpName)
 		return err
 	}
-	return os.Rename(tmpName, p)
+	if err := os.Rename(tmpName, p); err != nil {
+		return err
+	}
+	// Rebuild the search index alongside the manifest. Failure here is logged
+	// to stderr but doesn't fail the save — a missing index causes
+	// search_pages to fall back to its legacy ranker.
+	if err := SaveIndex(m.Name, BuildIndex(m.Pages)); err != nil {
+		fmt.Fprintf(os.Stderr, "pinax: warning: failed to write search index for %q: %v\n", m.Name, err)
+	}
+	return nil
 }
 
 // Load reads a manifest by name.
@@ -120,6 +129,25 @@ func List() ([]string, error) {
 	return names, nil
 }
 
+// LoadAll loads every manifest on disk, keyed by name. Manifests that fail to
+// parse are skipped silently — they will surface via `pinax list` and `pinax
+// doctor`. Safe to call on every tool invocation; manifest reads are tiny.
+func LoadAll() (map[string]*Manifest, error) {
+	names, err := List()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*Manifest, len(names))
+	for _, n := range names {
+		m, err := Load(n)
+		if err != nil {
+			continue
+		}
+		out[n] = m
+	}
+	return out, nil
+}
+
 // Delete removes a saved manifest.
 func Delete(name string) error {
 	p, err := Path(name)
@@ -132,6 +160,8 @@ func Delete(name string) error {
 		}
 		return err
 	}
+	// Best-effort: remove the companion index file too. Missing is fine.
+	_ = DeleteIndex(name)
 	return nil
 }
 

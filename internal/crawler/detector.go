@@ -54,7 +54,7 @@ func DetectPlatform(baseURL string) DetectionResult {
 	if err != nil {
 		return DetectionResult{Platform: PlatformUnknown, Supported: true}
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", userAgent())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

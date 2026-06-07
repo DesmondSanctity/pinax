@@ -54,6 +54,18 @@ body:
     required: true
 
  - type: textarea
+   id: doctor
+   attributes:
+    label: pinax doctor output
+    description: |
+      If the report is about a specific manifest, paste the output of
+      `pinax doctor <name> --json`. This captures discovery source,
+      page count drift, and preflight metrics in one structured blob.
+    render: json
+   validations:
+    required: false
+
+ - type: textarea
    id: extra
    attributes:
     label: Anything else
