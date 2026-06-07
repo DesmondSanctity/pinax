@@ -13,8 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"pinax/internal/buildinfo"
 	"pinax/internal/cache"
 	"pinax/internal/crawler"
+	"pinax/internal/doctor"
 	"pinax/internal/logger"
 	"pinax/internal/manifest"
 	mcpserver "pinax/internal/mcp/server"
@@ -40,6 +42,8 @@ func main() {
 		err = cmdRefresh(rest)
 	case "search":
 		err = cmdSearch(rest)
+	case "doctor":
+		err = cmdDoctor(rest)
 	case "serve":
 		err = cmdServe(rest)
 	case "cache":
@@ -77,6 +81,7 @@ Usage:
   pinax remove <name>
   pinax refresh <name> [--rebuild-index]
   pinax search <name> <query>
+  pinax doctor <name> [--json]
   pinax serve <name> [--http] [--port N]
   pinax cache clear [--older-than DURATION]
   pinax config claude [--project]
@@ -102,7 +107,7 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fmt.Fprintln(w, "Usage: pinax cache clear [flags]")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
-	case "list", "remove", "rm", "refresh", "config", "search":
+	case "list", "remove", "rm", "refresh", "config", "search", "doctor":
 		usage(w)
 	default:
 		fmt.Fprintf(w, "unknown command %q\n\n", cmd)
@@ -300,6 +305,46 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
+}
+
+// ---------- doctor ----------
+
+func cmdDoctor(args []string) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "emit JSON suitable for bug reports")
+	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
+		return fmt.Errorf("doctor: missing <name>")
+	}
+	name := fs.Arg(0)
+	m, err := manifest.Load(name)
+	if err != nil {
+		return err
+	}
+	if !*jsonOut {
+		fmt.Fprintf(os.Stderr, "diagnosing %s ...\n", m.BaseURL)
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	rep, err := doctor.Diagnose(ctx, m, buildinfoVersion())
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return rep.FormatJSON(os.Stdout)
+	}
+	rep.FormatText(os.Stdout)
+	if !rep.Healthy {
+		return fmt.Errorf("manifest unhealthy")
+	}
+	return nil
+}
+
+func buildinfoVersion() string {
+	v, _, _ := buildinfo.Resolve()
+	return v
 }
 
 // ---------- serve ----------
