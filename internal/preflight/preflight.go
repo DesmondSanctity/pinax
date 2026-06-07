@@ -153,8 +153,12 @@ func Check(ctx context.Context, pages []crawler.Page, opts Options) *Report {
 
 	// Gating: refuse if either
 	//   (a) too few pages cleared the prose floor, OR
-	//   (b) the average extraction ratio is starvation-low, OR
-	//   (c) we couldn't fetch most of the sample (HTTP failures).
+	//   (b) BOTH the mean ratio and the mean prose are low (combined signal
+	//       for JS-rendered shells), OR
+	//   (c) we couldn't fetch most of the sample.
+	// Note: a low ratio alone is NOT enough — many healthy Mintlify/Docusaurus
+	// sites ship bulky HTML shells around real, substantial content and would
+	// otherwise be false-positive-refused (Resend: prose=3274 chars, ratio=0.006).
 	if successful > 0 {
 		failFrac := float64(rep.BelowProseFloor) / float64(successful)
 		if failFrac > opts.FailFraction {
@@ -163,11 +167,11 @@ func Check(ctx context.Context, pages []crawler.Page, opts Options) *Report {
 				fmt.Sprintf("%d of %d sampled pages have <%d chars of prose (%.0f%%, threshold %.0f%%)",
 					rep.BelowProseFloor, successful, opts.ProseFloor, 100*failFrac, 100*opts.FailFraction))
 		}
-		if rep.MeanRatio < opts.RatioFloor {
+		if rep.MeanRatio < opts.RatioFloor && rep.MeanProseLen < 2*opts.ProseFloor {
 			rep.ShouldRefuse = true
 			rep.Reasons = append(rep.Reasons,
-				fmt.Sprintf("mean text/html ratio %.3f is below floor %.3f (suggests JS-rendered shells)",
-					rep.MeanRatio, opts.RatioFloor))
+				fmt.Sprintf("mean text/html ratio %.3f below floor %.3f AND mean prose %d below %d — looks like a JS shell",
+					rep.MeanRatio, opts.RatioFloor, rep.MeanProseLen, 2*opts.ProseFloor))
 		}
 	}
 	if rep.FetchFailures*2 > rep.SampledTotal {
@@ -200,6 +204,10 @@ func probe(ctx context.Context, url string, opts Options) PageResult {
 		return r
 	}
 	req.Header.Set("User-Agent", opts.UserAgent)
+	// Mirror the runtime get_page Accept header so content-negotiating sites
+	// (Docusaurus + llms.txt, etc.) hand us the same markdown they hand the
+	// MCP tool — otherwise we'd measure the HTML shell and refuse healthy sites.
+	req.Header.Set("Accept", "text/markdown, text/html;q=0.9, */*;q=0.8")
 	resp, err := opts.HTTPClient.Do(req)
 	if err != nil {
 		r.Err = err.Error()
@@ -216,10 +224,18 @@ func probe(ctx context.Context, url string, opts Options) PageResult {
 		return r
 	}
 	r.HTMLBytes = len(body)
-	prose, err := extractor.FromHTML(url, string(body))
-	if err != nil {
-		r.Err = err.Error()
-		return r
+
+	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+	var prose string
+	switch {
+	case strings.Contains(contentType, "text/markdown"), strings.HasSuffix(strings.ToLower(url), ".md"):
+		prose = extractor.FromMarkdown(url, string(body))
+	default:
+		prose, err = extractor.FromHTML(url, string(body))
+		if err != nil {
+			r.Err = err.Error()
+			return r
+		}
 	}
 	r.ProseLen = len(strings.TrimSpace(prose))
 	if r.HTMLBytes > 0 {

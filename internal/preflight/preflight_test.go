@@ -181,3 +181,48 @@ func makePages(base string, n int) []crawler.Page {
 	}
 	return out
 }
+
+func TestCheck_ContentNegotiatesMarkdown(t *testing.T) {
+	// Mimic Docusaurus+llms.txt sites that serve markdown when the client
+	// sends Accept: text/markdown.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		accept := r.Header.Get("Accept")
+		if strings.Contains(accept, "text/markdown") {
+			w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+			_, _ = w.Write([]byte(`# Real Documentation Page
+
+This page contains real markdown content. It describes how the widget
+works, lists configuration options, and includes examples. The text is
+deliberately verbose so the prose floor is comfortably cleared with no
+need for any HTML extraction at all.
+
+## Configuration
+
+Set widget.mode to "append" or "replace" depending on your use case.
+The default is "append" which preserves existing data while adding new
+records. The "replace" mode atomically swaps the entire dataset.
+
+## Examples
+
+Here are several worked examples covering common configurations users
+encounter when integrating the widget into production deployments.
+`))
+			return
+		}
+		// Plain HTML shell — what we'd get without content negotiation.
+		_, _ = w.Write([]byte(shellHTML))
+	}))
+	defer srv.Close()
+
+	pages := makePages(srv.URL, 5)
+	rep := preflight.Check(context.Background(), pages, preflight.Options{
+		SampleSize: 5,
+		HTTPClient: srv.Client(),
+	})
+	if rep.ShouldRefuse {
+		t.Errorf("content-negotiated markdown should pass: %v", rep.Reasons)
+	}
+	if rep.MeanProseLen < 300 {
+		t.Errorf("markdown path should produce substantial prose, got %d", rep.MeanProseLen)
+	}
+}
