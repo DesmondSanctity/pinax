@@ -18,6 +18,7 @@ import (
 	"pinax/internal/logger"
 	"pinax/internal/manifest"
 	mcpserver "pinax/internal/mcp/server"
+	"pinax/internal/preflight"
 )
 
 func main() {
@@ -116,6 +117,7 @@ type addOpts struct {
 	maxPages    *int
 	concurrency *int
 	excludes    multiString
+	noPreflight *bool
 }
 
 func newAddFlags() (*flag.FlagSet, *addOpts) {
@@ -124,6 +126,7 @@ func newAddFlags() (*flag.FlagSet, *addOpts) {
 		name:        fs.String("name", "", "manifest name (defaults to derived from host)"),
 		maxPages:    fs.Int("max-pages", 0, "override default max pages"),
 		concurrency: fs.Int("concurrency", 0, "override default concurrency"),
+		noPreflight: fs.Bool("no-preflight", false, "skip the content-density check (use only if you know the site works)"),
 	}
 	fs.Var(&o.excludes, "exclude", "URL substring(s) to skip (repeatable)")
 	return fs, o
@@ -161,6 +164,17 @@ func cmdAdd(args []string) error {
 		return fmt.Errorf("crawl: %w", err)
 	}
 	fmt.Printf("discovered %d pages via %s in %s\n", len(res.Pages), res.Source, time.Since(start).Truncate(time.Millisecond))
+
+	if !*o.noPreflight {
+		fmt.Print("running content-density check ... ")
+		rep := preflight.Check(ctx, res.Pages, preflight.Options{})
+		fmt.Printf("sampled %d, mean prose %d chars, mean ratio %.3f\n",
+			rep.SampledTotal, rep.MeanProseLen, rep.MeanRatio)
+		if rep.ShouldRefuse {
+			rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
+			return fmt.Errorf("content-density check failed; manifest not written")
+		}
+	}
 
 	m := manifest.FromCrawlResult(*o.name, res)
 	if err := manifest.Save(m); err != nil {
