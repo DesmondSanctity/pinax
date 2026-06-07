@@ -1,0 +1,53 @@
+# Sites probed by the weekly canary CI job.
+# Each entry asserts that `pinax add <url>` produces at least
+# minPages and that the mean prose length is at least minProse.
+# Add platform notes so regressions point at a likely culprit.
+sites:
+  - url: https://docs.stripe.com
+    platform: custom
+    minPages: 200
+    minProse: 500
+  - url: https://docs.convex.dev
+    platform: docusaurus+llms.txt
+    minPages: 100
+    minProse: 500
+  - url: https://resend.com/docs
+    platform: mintlify
+    minPages: 50
+    minProse: 500
+  - url: https://modal.com/docs
+    platform: custom
+    minPages: 30
+    minProse: 300
+  - url: https://react.dev/learn
+    platform: custom+llms.txt
+    minPages: 30
+    minProse: 300
+  - url: https://nextjs.org/docs
+    platform: nextra
+    minPages: 50
+    minProse: 300
+  - url: https://docs.anthropic.com
+    platform: mintlify
+    minPages: 50
+    minProse: 500
+  - url: https://platform.openai.com/docs
+    platform: custom
+    minPages: 20
+    minProse: 300
+  - url: https://vercel.com/docs
+    platform: custom
+    minPages: 50
+    minProse: 300
+  - url: https://docs.github.com
+    platform: custom
+    minPages: 200
+    minProse: 500
+  - url: https://supabase.com/docs
+    platform: custom+llms.txt
+    minPages: 50
+    minProse: 300
+  - url: https://docs.python.org/3/
+    platform: sphinx
+    minPages: 200
+    minProse: 500
