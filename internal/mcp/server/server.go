@@ -18,17 +18,32 @@ import (
 // Version is the pinax protocol version reported to MCP clients.
 const Version = "1.0.0"
 
-// New constructs an MCPServer with all four pinax tools registered. If
-// logStore is non-nil every tool call is recorded as serverName.
-func New(m *manifest.Manifest, c *cache.PageCache, logStore *logger.Store, serverName string) *mcpsrv.MCPServer {
+// New constructs an MCPServer with all pinax tools registered.
+//
+// `manifests` may contain one entry (legacy `pinax serve <name>`) or many
+// (unified `pinax serve`). When `reload` is non-nil it is invoked at the
+// start of routing tool calls so new manifests appear without restart.
+//
+// `displayName` becomes the MCP server name reported to clients. Pass "pinax"
+// for unified mode, "pinax/<name>" for single-name mode.
+//
+// If `logStore` is non-nil every tool call is recorded using `displayName`.
+func New(
+	manifests map[string]*manifest.Manifest,
+	c *cache.PageCache,
+	logStore *logger.Store,
+	displayName string,
+	reload func() (map[string]*manifest.Manifest, error),
+) *mcpsrv.MCPServer {
 	s := mcpsrv.NewMCPServer(
-		"pinax/"+serverName,
+		displayName,
 		Version,
 		mcpsrv.WithToolCapabilities(false),
 	)
-	deps := tools.New(m, c)
+	deps := tools.New(manifests, c)
+	deps.Reload = reload
 	deps.Register(s, func(h mcpsrv.ToolHandlerFunc) mcpsrv.ToolHandlerFunc {
-		return middleware.WithLogging(logStore, serverName, h)
+		return middleware.WithLogging(logStore, displayName, h)
 	})
 	return s
 }

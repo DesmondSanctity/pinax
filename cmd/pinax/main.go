@@ -247,13 +247,38 @@ func cmdServe(args []string) error {
 	if err := fs.Parse(reorderArgs(fs, args)); err != nil {
 		return err
 	}
-	if fs.NArg() < 1 {
-		return fmt.Errorf("serve: missing <name>")
-	}
-	name := fs.Arg(0)
-	m, err := manifest.Load(name)
-	if err != nil {
-		return err
+
+	// Unified mode: no positional arg → expose every manifest under one server.
+	// Legacy mode: `pinax serve <name>` → single-manifest behaviour preserved.
+	unified := fs.NArg() == 0
+
+	var (
+		manifests   map[string]*manifest.Manifest
+		reload      func() (map[string]*manifest.Manifest, error)
+		displayName string
+		labelForUI  string // shown in startup hint/HTTP banner
+		err         error
+	)
+	if unified {
+		manifests, err = manifest.LoadAll()
+		if err != nil {
+			return err
+		}
+		if len(manifests) == 0 {
+			return fmt.Errorf("no docs indexed — run `pinax add <url>` first")
+		}
+		reload = manifest.LoadAll
+		displayName = "pinax"
+		labelForUI = "pinax (unified)"
+	} else {
+		name := fs.Arg(0)
+		m, err := manifest.Load(name)
+		if err != nil {
+			return err
+		}
+		manifests = map[string]*manifest.Manifest{name: m}
+		displayName = "pinax/" + name
+		labelForUI = name
 	}
 
 	pinaxDir, err := pinaxHome()
@@ -271,28 +296,42 @@ func cmdServe(args []string) error {
 	}
 	defer func() { _ = logStore.Close() }()
 
-	mcpSrv := mcpserver.New(m, c, logStore, name)
+	mcpSrv := mcpserver.New(manifests, c, logStore, displayName, reload)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	stdinIsTTY := isTerminal(os.Stdin)
 	if !*o.useHTTP && stdinIsTTY {
-		printConfigHint(name)
+		printConfigHint(unified, labelForUI)
 	}
 
 	if *o.useHTTP {
 		addr := fmt.Sprintf(":%d", *o.port)
-		fmt.Fprintf(os.Stderr, "pinax serving %s on http://localhost%s (POST /mcp, log UI /)\n", name, addr)
+		fmt.Fprintf(os.Stderr, "pinax serving %s on http://localhost%s (POST /mcp, log UI /)\n", labelForUI, addr)
 		return mcpserver.ListenAndServeHTTP(ctx, mcpSrv, logStore, mcpserver.HTTPOptions{Addr: addr})
 	}
 	return mcpserver.ServeStdio(ctx, mcpSrv)
 }
 
-func printConfigHint(name string) {
+func printConfigHint(unified bool, name string) {
 	exe, _ := os.Executable()
 	if exe == "" {
 		exe = "pinax"
+	}
+	if unified {
+		fmt.Fprintf(os.Stderr, `
+pinax is waiting on stdio (unified mode, all docs available via list_docs).
+To use from Claude Desktop, add to your config:
+
+  "mcpServers": {
+    "pinax": { "command": "%s", "args": ["serve"] }
+  }
+
+Or run 'pinax serve --http' for HTTP mode with the log viewer.
+
+`, exe)
+		return
 	}
 	fmt.Fprintf(os.Stderr, `
 pinax is waiting on stdio. To use it from Claude Desktop, add to your config:
@@ -354,18 +393,22 @@ func cmdConfig(args []string) error {
 	switch args[0] {
 	case "claude":
 		project := false
+		split := false
 		for _, a := range args[1:] {
-			if a == "--project" {
+			switch a {
+			case "--project":
 				project = true
+			case "--split":
+				split = true
 			}
 		}
-		return configClaude(project)
+		return configClaude(project, split)
 	default:
 		return fmt.Errorf("config: unknown target %q", args[0])
 	}
 }
 
-func configClaude(project bool) error {
+func configClaude(project, split bool) error {
 	names, err := manifest.List()
 	if err != nil {
 		return err
@@ -380,12 +423,18 @@ func configClaude(project bool) error {
 
 	var sb strings.Builder
 	sb.WriteString("{\n  \"mcpServers\": {\n")
-	for i, n := range names {
-		fmt.Fprintf(&sb, "    %q: { \"command\": %q, \"args\": [\"serve\", %q] }", n, exe, n)
-		if i < len(names)-1 {
-			sb.WriteString(",")
+	if split {
+		// Legacy: one MCP server entry per manifest.
+		for i, n := range names {
+			fmt.Fprintf(&sb, "    %q: { \"command\": %q, \"args\": [\"serve\", %q] }", n, exe, n)
+			if i < len(names)-1 {
+				sb.WriteString(",")
+			}
+			sb.WriteString("\n")
 		}
-		sb.WriteString("\n")
+	} else {
+		// Unified (default): one entry serving every indexed docs site.
+		fmt.Fprintf(&sb, "    \"pinax\": { \"command\": %q, \"args\": [\"serve\"] }\n", exe)
 	}
 	sb.WriteString("  }\n}\n")
 

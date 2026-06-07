@@ -120,6 +120,25 @@ func List() ([]string, error) {
 	return names, nil
 }
 
+// LoadAll loads every manifest on disk, keyed by name. Manifests that fail to
+// parse are skipped silently — they will surface via `pinax list` and `pinax
+// doctor`. Safe to call on every tool invocation; manifest reads are tiny.
+func LoadAll() (map[string]*Manifest, error) {
+	names, err := List()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*Manifest, len(names))
+	for _, n := range names {
+		m, err := Load(n)
+		if err != nil {
+			continue
+		}
+		out[n] = m
+	}
+	return out, nil
+}
+
 // Delete removes a saved manifest.
 func Delete(name string) error {
 	p, err := Path(name)
