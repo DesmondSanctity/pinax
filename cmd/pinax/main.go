@@ -99,7 +99,8 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fs.PrintDefaults()
 	case "serve":
 		fs, _ := newServeFlags()
-		fmt.Fprintln(w, "Usage: pinax serve <name> [flags]")
+		fmt.Fprintln(w, "Usage: pinax serve [<name>] [flags]")
+		fmt.Fprintln(w, "  With no <name>, hosts every indexed manifest in a single unified server.")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
 	case "cache":
@@ -107,8 +108,32 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fmt.Fprintln(w, "Usage: pinax cache clear [flags]")
 		fs.SetOutput(w)
 		fs.PrintDefaults()
-	case "list", "remove", "rm", "refresh", "config", "search", "doctor":
-		usage(w)
+	case "refresh":
+		fs := flag.NewFlagSet("refresh", flag.ContinueOnError)
+		fs.Bool("rebuild-index", false, "only rebuild the BM25 index; skip re-crawling")
+		fmt.Fprintln(w, "Usage: pinax refresh <name> [flags]")
+		fs.SetOutput(w)
+		fs.PrintDefaults()
+	case "search":
+		fs := flag.NewFlagSet("search", flag.ContinueOnError)
+		fs.Int("limit", 10, "max results")
+		fmt.Fprintln(w, "Usage: pinax search <name> <query> [flags]")
+		fs.SetOutput(w)
+		fs.PrintDefaults()
+	case "doctor":
+		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+		fs.Bool("json", false, "emit JSON suitable for bug reports")
+		fmt.Fprintln(w, "Usage: pinax doctor <name> [flags]")
+		fs.SetOutput(w)
+		fs.PrintDefaults()
+	case "config":
+		fmt.Fprintln(w, "Usage: pinax config claude [--project] [--split]")
+		fmt.Fprintln(w, "  --project  write to ./.mcp.json instead of printing to stdout")
+		fmt.Fprintln(w, "  --split    emit one entry per manifest (legacy form) instead of one unified entry")
+	case "list":
+		fmt.Fprintln(w, "Usage: pinax list")
+	case "remove", "rm":
+		fmt.Fprintln(w, "Usage: pinax remove <name>")
 	default:
 		fmt.Fprintf(w, "unknown command %q\n\n", cmd)
 		usage(w)

@@ -114,10 +114,18 @@ func TestDiagnose_FormatJSONStableShape(t *testing.T) {
 	if err := json.Unmarshal([]byte(sb.String()), &decoded); err != nil {
 		t.Fatalf("JSON not valid: %v", err)
 	}
-	for _, key := range []string{"name", "baseUrl", "manifestAgeNs", "storedPages", "currentPages", "preflight", "healthy", "pinaxVersion"} {
+	for _, key := range []string{"name", "baseUrl", "manifestAgeNs", "storedPages", "currentPages", "preflight", "healthy", "reasons", "pinaxVersion"} {
 		if _, ok := decoded[key]; !ok {
 			t.Errorf("missing key %q in JSON output: %s", key, sb.String())
 		}
+	}
+	// reasons must always be a (possibly empty) array, never null or absent.
+	reasons, ok := decoded["reasons"].([]any)
+	if !ok {
+		t.Errorf("reasons should be a JSON array, got %T: %s", decoded["reasons"], sb.String())
+	}
+	if rep.Healthy && len(reasons) != 0 {
+		t.Errorf("healthy report should have empty reasons, got %v", reasons)
 	}
 }
 

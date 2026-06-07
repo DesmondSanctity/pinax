@@ -31,7 +31,7 @@ type Report struct {
 	CurrentSource string            `json:"currentSource"`
 	Preflight     *preflight.Report `json:"preflight"`
 	Healthy       bool              `json:"healthy"`
-	Reasons       []string          `json:"reasons,omitempty"`
+	Reasons       []string          `json:"reasons"`
 	PinaxVersion  string            `json:"pinaxVersion,omitempty"`
 }
 
@@ -48,6 +48,7 @@ func Diagnose(ctx context.Context, m *manifest.Manifest, pinaxVersion string) (*
 		StoredPages:  len(m.Pages),
 		StoredSource: m.Source,
 		PinaxVersion: pinaxVersion,
+		Reasons:      []string{},
 	}
 	res, err := crawler.Crawl(ctx, m.BaseURL, crawler.DefaultOptions())
 	if err != nil {
