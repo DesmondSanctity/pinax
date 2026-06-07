@@ -17,6 +17,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpsrv "github.com/mark3labs/mcp-go/server"
 
+	"pinax/internal/buildinfo"
 	"pinax/internal/cache"
 	"pinax/internal/crawler"
 	"pinax/internal/extractor"
@@ -305,7 +306,7 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Accept", "text/markdown, text/html;q=0.9, */*;q=0.8")
-	req.Header.Set("User-Agent", "pinax/1.0")
+	req.Header.Set("User-Agent", buildinfo.UserAgent())
 
 	resp, err := d.HTTP.Do(req)
 	if err != nil {

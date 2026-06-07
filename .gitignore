@@ -7,3 +7,4 @@ coverage.out
 
 # Internal design docs (kept local for development reference only).
 docs/
+scripts/
