@@ -105,6 +105,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           today=$(date -u +%Y-%m-%d)
+          gh label create canary \
+            --color FBCA04 \
+            --description "automated canary regression" \
+            2>/dev/null || true
           gh issue create \
             --title "canary: docs regression on $today" \
             --label canary \
