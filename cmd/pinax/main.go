@@ -15,6 +15,7 @@ import (
 
 	"pinax/internal/buildinfo"
 	"pinax/internal/cache"
+	"pinax/internal/catalog"
 	"pinax/internal/crawler"
 	"pinax/internal/doctor"
 	"pinax/internal/logger"
@@ -50,6 +51,8 @@ func main() {
 		err = cmdCache(rest)
 	case "config":
 		err = cmdConfig(rest)
+	case "catalog":
+		err = cmdCatalog(rest)
 	case "-v", "--version", "version":
 		printVersion(os.Stdout)
 	case "-h", "--help", "help":
@@ -76,7 +79,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, `pinax — turn any docs site into a local MCP server
 
 Usage:
-  pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N]
+  pinax add <url|catalog-name> [--name NAME] [--exclude PATTERN ...] [--max-pages N]
   pinax list
   pinax remove <name>
   pinax refresh <name> [--rebuild-index]
@@ -85,6 +88,7 @@ Usage:
   pinax serve <name> [--http] [--port N]
   pinax cache clear [--older-than DURATION]
   pinax config claude [--project]
+  pinax catalog list|refresh
   pinax help <command>
   pinax --version`)
 }
@@ -127,13 +131,18 @@ func printCommandHelp(w io.Writer, cmd string) {
 		fs.SetOutput(w)
 		fs.PrintDefaults()
 	case "config":
-		fmt.Fprintln(w, "Usage: pinax config claude [--project] [--split]")
-		fmt.Fprintln(w, "  --project  write to ./.mcp.json instead of printing to stdout")
-		fmt.Fprintln(w, "  --split    emit one entry per manifest (legacy form) instead of one unified entry")
+		fs, _, _, _ := newConfigClaudeFlags()
+		fmt.Fprintln(w, "Usage: pinax config claude [flags]")
+		fs.SetOutput(w)
+		fs.PrintDefaults()
 	case "list":
 		fmt.Fprintln(w, "Usage: pinax list")
 	case "remove", "rm":
 		fmt.Fprintln(w, "Usage: pinax remove <name>")
+	case "catalog":
+		fmt.Fprintln(w, "Usage: pinax catalog list|refresh")
+		fmt.Fprintln(w, "  list     print every curated docs site bundled with this binary")
+		fmt.Fprintln(w, "  refresh  fetch the latest catalog from $PINAX_CATALOG_URL (or the default)")
 	default:
 		fmt.Fprintf(w, "unknown command %q\n\n", cmd)
 		usage(w)
@@ -168,9 +177,28 @@ func cmdAdd(args []string) error {
 		return err
 	}
 	if fs.NArg() < 1 {
-		return fmt.Errorf("add: missing <url>")
+		return fmt.Errorf("add: missing <url> or catalog name")
 	}
 	rawURL := fs.Arg(0)
+
+	// Catalog shortcut: bare names (no scheme, no dot) resolve through the
+	// curated catalog. URLs and host:port forms bypass the lookup.
+	var entry catalog.Entry
+	if !looksLikeURL(rawURL) {
+		e, ok := catalog.Load().Lookup(rawURL)
+		if !ok {
+			return fmt.Errorf("add: %q is not a URL and not in the catalog (try `pinax catalog list`)", rawURL)
+		}
+		entry = e
+		if *o.name == "" {
+			*o.name = strings.ToLower(rawURL)
+		}
+		rawURL = e.URL
+		if len(o.excludes) == 0 {
+			o.excludes = append(o.excludes, e.Excludes...)
+		}
+		fmt.Printf("catalog: %s → %s\n", entry.DisplayName, rawURL)
+	}
 
 	if *o.name == "" {
 		*o.name = deriveName(rawURL)
@@ -215,6 +243,17 @@ func cmdAdd(args []string) error {
 	return nil
 }
 
+// looksLikeURL is a cheap heuristic to distinguish a URL from a catalog key.
+// We treat anything with a scheme, a dot, or a slash as a URL; everything
+// else is a candidate catalog name.
+func looksLikeURL(s string) bool {
+	s = strings.TrimSpace(s)
+	if strings.Contains(s, "://") || strings.Contains(s, ".") || strings.Contains(s, "/") {
+		return true
+	}
+	return false
+}
+
 // ---------- list ----------
 
 func cmdList() error {
@@ -244,7 +283,11 @@ func cmdRemove(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("remove: missing <name>")
 	}
-	return manifest.Delete(args[0])
+	if err := manifest.Delete(args[0]); err != nil {
+		return err
+	}
+	fmt.Printf("removed %s\n", args[0])
+	return nil
 }
 
 // ---------- refresh ----------
@@ -303,14 +346,23 @@ func cmdSearch(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// BM25 first, fall back to the shared substring+fuzzy pipeline so the
+	// CLI matches the MCP search_pages tool. A missing index is non-fatal:
+	// older manifests just go straight to the fallback.
+	var hits []manifest.Hit
 	idx, err := manifest.LoadIndex(name)
-	if err != nil {
-		if err == manifest.ErrIndexMissing {
-			return fmt.Errorf("no search index for %q — run 'pinax refresh %s --rebuild-index'", name, name)
-		}
+	switch err {
+	case nil:
+		hits = idx.Search(query, *limit)
+	case manifest.ErrIndexMissing:
+		// pre-v0.2 manifest — silent fallback
+	default:
 		return err
 	}
-	hits := idx.Search(query, *limit)
+	if len(hits) == 0 {
+		hits = manifest.FallbackSearch(m.Pages, query, *limit)
+	}
 	if len(hits) == 0 {
 		fmt.Println("(no matches)")
 		return nil
@@ -538,23 +590,25 @@ func cmdConfig(args []string) error {
 	}
 	switch args[0] {
 	case "claude":
-		project := false
-		split := false
-		for _, a := range args[1:] {
-			switch a {
-			case "--project":
-				project = true
-			case "--split":
-				split = true
-			}
+		fs, project, split, force := newConfigClaudeFlags()
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
 		}
-		return configClaude(project, split)
+		return configClaude(*project, *split, *force)
 	default:
 		return fmt.Errorf("config: unknown target %q", args[0])
 	}
 }
 
-func configClaude(project, split bool) error {
+func newConfigClaudeFlags() (*flag.FlagSet, *bool, *bool, *bool) {
+	fs := flag.NewFlagSet("config claude", flag.ContinueOnError)
+	project := fs.Bool("project", false, "write to ./.mcp.json instead of printing to stdout")
+	split := fs.Bool("split", false, "emit one entry per manifest (legacy form) instead of one unified entry")
+	force := fs.Bool("force", false, "with --project, overwrite an existing ./.mcp.json")
+	return fs, project, split, force
+}
+
+func configClaude(project, split, force bool) error {
 	names, err := manifest.List()
 	if err != nil {
 		return err
@@ -585,12 +639,52 @@ func configClaude(project, split bool) error {
 	sb.WriteString("  }\n}\n")
 
 	if project {
-		fmt.Println("# Place the following in ./.mcp.json")
-	} else {
-		fmt.Println("# Add the mcpServers block to ~/Library/Application Support/Claude/claude_desktop_config.json")
+		const path = ".mcp.json"
+		if _, err := os.Stat(path); err == nil && !force {
+			return fmt.Errorf("%s already exists — pass --force to overwrite", path)
+		}
+		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
+			return err
+		}
+		fmt.Printf("wrote %s\n", path)
+		return nil
 	}
+	fmt.Println("# Add the mcpServers block to ~/Library/Application Support/Claude/claude_desktop_config.json")
 	fmt.Print(sb.String())
 	return nil
+}
+
+// ---------- catalog ----------
+
+func cmdCatalog(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("catalog: missing subcommand (try 'catalog list' or 'catalog refresh')")
+	}
+	switch args[0] {
+	case "list":
+		c := catalog.Load()
+		fmt.Printf("# pinax catalog (version %s, %d entries)\n", c.Version, len(c.Entries))
+		for _, name := range c.Names() {
+			e := c.Entries[name]
+			tag := ""
+			if len(e.Tags) > 0 {
+				tag = "  [" + strings.Join(e.Tags, ", ") + "]"
+			}
+			fmt.Printf("  %-14s  %s%s\n", name, e.URL, tag)
+		}
+		return nil
+	case "refresh":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		c, err := catalog.Refresh(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("catalog refreshed (version %s, %d entries)\n", c.Version, len(c.Entries))
+		return nil
+	default:
+		return fmt.Errorf("catalog: unknown subcommand %q (try 'list' or 'refresh')", args[0])
+	}
 }
 
 // ---------- helpers ----------

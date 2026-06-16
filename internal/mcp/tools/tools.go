@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpsrv "github.com/mark3labs/mcp-go/server"
 
@@ -237,6 +236,7 @@ type SearchHit struct {
 	URL     string `json:"url"`
 	Title   string `json:"title"`
 	Section string `json:"section"`
+	Docs    string `json:"docs,omitempty"`
 }
 
 // SearchPagesTool spec.
@@ -245,20 +245,17 @@ func SearchPagesTool() mcp.Tool {
 		mcp.WithDescription(
 			"Fuzzy-search documentation pages by URL or title. Returns up to "+
 				"50 best matches. Use this when the user asks about a specific "+
-				"feature, API, or concept.",
+				"feature, API, or concept. Omit `docs` to search across every "+
+				"indexed site at once — each hit then carries a `docs` field.",
 		),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Search text")),
-		mcp.WithString("docs", mcp.Description("Docs name from list_docs. Omit when only one site is indexed.")),
+		mcp.WithString("docs", mcp.Description("Docs name from list_docs. Omit to search across all indexed sites.")),
 		mcp.WithNumber("limit", mcp.Description("Max results, default 50")),
 	)
 }
 
 // SearchPages handler.
 func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	m, err := d.resolve(docsArg(req))
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
 	q, err := req.RequireString("query")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -272,51 +269,76 @@ func (d *Deps) SearchPages(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		limit = 50
 	}
 
-	// Try BM25 first. Falls through to the legacy substring/fuzzy pipeline
-	// when the index is missing (pre-v0.2 manifest) or returns zero hits.
-	if bm25Hits := d.bm25Search(m, q, limit); len(bm25Hits) > 0 {
-		return jsonResult(bm25Hits)
+	docs := docsArg(req)
+	all := d.Manifests()
+
+	// Cross-doc search when caller omits `docs` and we host more than one.
+	if docs == "" && len(all) > 1 {
+		hits := d.searchAcross(all, q, limit)
+		return jsonResult(hits)
 	}
 
-	tokens := strings.Fields(strings.ToLower(q))
+	m, err := d.resolve(docs)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return jsonResult(d.searchOne(m, q, limit, false))
+}
 
-	type scored struct {
-		page  crawler.Page
-		score int
-	}
-	var matches []scored
-	for _, p := range m.Pages {
-		// Normalize separators so multi-token queries match against URL paths
-		// like /api-reference/api-keys/create-api-key.
-		haystack := normalizeHaystack(p.URL + " " + p.Title)
-		score, ok := scoreTokens(tokens, haystack)
-		if !ok {
-			continue
-		}
-		matches = append(matches, scored{p, score})
-	}
-	// Typo tolerance fallback: if every token had to substring-match and we got
-	// nothing, retry with a fuzzy pass.
-	if len(matches) == 0 {
-		for _, p := range m.Pages {
-			haystack := normalizeHaystack(p.URL + " " + p.Title)
-			score, ok := fuzzyScoreTokens(tokens, haystack)
-			if !ok {
+// searchOne runs BM25 first, then the substring/fuzzy fallback. When tag is
+// true the returned hits carry the manifest name in their Docs field.
+func (d *Deps) searchOne(m *manifest.Manifest, q string, limit int, tag bool) []SearchHit {
+	var hits []SearchHit
+	if bm := d.bm25Search(m, q, limit); len(bm) > 0 {
+		hits = bm
+	} else {
+		for _, h := range manifest.FallbackSearch(m.Pages, q, limit) {
+			if h.DocID < 0 || h.DocID >= len(m.Pages) {
 				continue
 			}
-			matches = append(matches, scored{p, score})
+			p := m.Pages[h.DocID]
+			hits = append(hits, SearchHit{URL: p.URL, Title: p.Title, Section: p.Section})
 		}
 	}
-	sort.SliceStable(matches, func(i, j int) bool { return matches[i].score < matches[j].score })
+	if tag {
+		for i := range hits {
+			hits[i].Docs = m.Name
+		}
+	}
+	return hits
+}
 
-	if len(matches) > limit {
-		matches = matches[:limit]
+// searchAcross runs searchOne against every manifest, takes the top hits
+// from each, then interleaves them so the caller sees a balanced cross-doc
+// result set. Per-manifest BM25 scores are not directly comparable, so we
+// round-robin instead of sorting globally.
+func (d *Deps) searchAcross(all map[string]*manifest.Manifest, q string, limit int) []SearchHit {
+	names := sortedNames(all)
+	perDoc := limit
+	if perDoc < 5 {
+		perDoc = 5
 	}
-	hits := make([]SearchHit, len(matches))
-	for i, m := range matches {
-		hits[i] = SearchHit{URL: m.page.URL, Title: m.page.Title, Section: m.page.Section}
+	buckets := make([][]SearchHit, 0, len(names))
+	for _, n := range names {
+		buckets = append(buckets, d.searchOne(all[n], q, perDoc, true))
 	}
-	return jsonResult(hits)
+	out := make([]SearchHit, 0, limit)
+	for i := 0; len(out) < limit; i++ {
+		progressed := false
+		for _, b := range buckets {
+			if i < len(b) {
+				out = append(out, b[i])
+				progressed = true
+				if len(out) >= limit {
+					break
+				}
+			}
+		}
+		if !progressed {
+			break
+		}
+	}
+	return out
 }
 
 // bm25Search runs the BM25 ranker for q against m and returns SearchHits.
@@ -370,63 +392,6 @@ func (d *Deps) loadIndex(m *manifest.Manifest) *manifest.Index {
 	return idx
 }
 
-// scoreTokens requires every token to appear as a substring of haystack.
-// Lower score is better: it rewards tokens appearing later in the path (more
-// specific pages) and slightly penalises long haystacks so a leaf page beats
-// an index page that merely lists the same words.
-func scoreTokens(tokens []string, haystack string) (int, bool) {
-	if len(tokens) == 0 {
-		return 0, false
-	}
-	score := 0
-	for _, tok := range tokens {
-		idx := strings.Index(haystack, tok)
-		if idx < 0 {
-			return 0, false
-		}
-		// Reward specificity: tokens appearing later in the URL (e.g. the leaf
-		// segment) signal that this page is *about* that token. We invert the
-		// position so later = lower (better) score.
-		score += len(haystack) - idx
-	}
-	score += len(haystack)
-	return score, true
-}
-
-// fuzzyScoreTokens is the typo-tolerant fallback: every token must fuzzy-match
-// haystack. Lower score is better.
-func fuzzyScoreTokens(tokens []string, haystack string) (int, bool) {
-	if len(tokens) == 0 {
-		return 0, false
-	}
-	total := 0
-	for _, tok := range tokens {
-		if !fuzzy.MatchFold(tok, haystack) {
-			return 0, false
-		}
-		total += fuzzy.RankMatchFold(tok, haystack)
-	}
-	return total, true
-}
-
-// normalizeHaystack lowercases and replaces non-alphanumeric runes with spaces
-// so per-token matching works across path separators, dashes and underscores.
-func normalizeHaystack(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case c >= 'A' && c <= 'Z':
-			b[i] = c + ('a' - 'A')
-		case (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'):
-			b[i] = c
-		default:
-			b[i] = ' '
-		}
-	}
-	return string(b)
-}
-
 // ---------- get_section_pages ----------
 
 // GetSectionPagesTool spec.
@@ -452,13 +417,24 @@ func (d *Deps) GetSectionPages(_ context.Context, req mcp.CallToolRequest) (*mcp
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	var out []SearchHit
+	seen := map[string]struct{}{}
 	for _, p := range m.Pages {
+		s := p.Section
+		if s == "" {
+			s = "/"
+		}
+		seen[s] = struct{}{}
 		if p.Section == section || (section == "/" && p.Section == "") {
 			out = append(out, SearchHit{URL: p.URL, Title: p.Title, Section: p.Section})
 		}
 	}
 	if len(out) == 0 {
-		return mcp.NewToolResultError(fmt.Sprintf("no pages found in section %q — call list_sections to see available sections", section)), nil
+		available := make([]string, 0, len(seen))
+		for s := range seen {
+			available = append(available, s)
+		}
+		sort.Strings(available)
+		return mcp.NewToolResultError(fmt.Sprintf("no pages found in section %q (available: %s)", section, strings.Join(available, ", "))), nil
 	}
 	return jsonResult(out)
 }

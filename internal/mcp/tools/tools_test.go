@@ -362,6 +362,26 @@ func TestUnified_SingleManifestNoDocsArgWorks(t *testing.T) {
 	}
 }
 
+func TestUnified_CrossDocSearchWhenDocsOmitted(t *testing.T) {
+	d := tools.New(multiManifests(), nil)
+	res := callTool(t, d.SearchPages, "search_pages", map[string]any{"query": "intro"})
+	if res.IsError {
+		t.Fatalf("expected cross-doc search to succeed, got: %s", toolText(t, res))
+	}
+	var hits []tools.SearchHit
+	if err := json.Unmarshal([]byte(toolText(t, res)), &hits); err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 {
+		t.Fatal("expected at least one hit")
+	}
+	for _, h := range hits {
+		if h.Docs == "" {
+			t.Errorf("cross-doc hit missing docs field: %+v", h)
+		}
+	}
+}
+
 func TestUnified_ReloadHookPicksUpNewManifest(t *testing.T) {
 	state := multiManifests()
 	d := tools.New(state, nil)

@@ -1,0 +1,80 @@
+{
+  "version": "2026.06.16",
+  "entries": {
+    "stripe": {
+      "displayName": "Stripe",
+      "url": "https://docs.stripe.com",
+      "tags": ["payments", "billing", "api"]
+    },
+    "react": {
+      "displayName": "React",
+      "url": "https://react.dev/learn",
+      "tags": ["frontend", "framework", "javascript"]
+    },
+    "nextjs": {
+      "displayName": "Next.js",
+      "url": "https://nextjs.org/docs",
+      "tags": ["frontend", "framework", "react"]
+    },
+    "modal": {
+      "displayName": "Modal",
+      "url": "https://modal.com",
+      "tags": ["serverless", "gpu", "compute"]
+    },
+    "convex": {
+      "displayName": "Convex",
+      "url": "https://docs.convex.dev",
+      "tags": ["backend", "database", "realtime"]
+    },
+    "anthropic": {
+      "displayName": "Anthropic API",
+      "url": "https://docs.anthropic.com",
+      "tags": ["ai", "llm", "api"]
+    },
+    "openai": {
+      "displayName": "OpenAI API",
+      "url": "https://platform.openai.com/docs",
+      "tags": ["ai", "llm", "api"]
+    },
+    "supabase": {
+      "displayName": "Supabase",
+      "url": "https://supabase.com/docs",
+      "tags": ["backend", "database", "auth"]
+    },
+    "tailwind": {
+      "displayName": "Tailwind CSS",
+      "url": "https://tailwindcss.com/docs",
+      "tags": ["css", "frontend", "styling"]
+    },
+    "fastapi": {
+      "displayName": "FastAPI",
+      "url": "https://fastapi.tiangolo.com",
+      "tags": ["python", "web", "framework"]
+    },
+    "django": {
+      "displayName": "Django",
+      "url": "https://docs.djangoproject.com/en/stable/",
+      "tags": ["python", "web", "framework"]
+    },
+    "go": {
+      "displayName": "Go standard library",
+      "url": "https://pkg.go.dev/std",
+      "tags": ["go", "language", "stdlib"]
+    },
+    "kubernetes": {
+      "displayName": "Kubernetes",
+      "url": "https://kubernetes.io/docs/home/",
+      "tags": ["devops", "containers", "orchestration"]
+    },
+    "vercel": {
+      "displayName": "Vercel",
+      "url": "https://vercel.com/docs",
+      "tags": ["hosting", "deployment", "frontend"]
+    },
+    "mcp": {
+      "displayName": "Model Context Protocol",
+      "url": "https://modelcontextprotocol.io/docs/getting-started/intro",
+      "tags": ["mcp", "ai", "tools"]
+    }
+  }
+}
