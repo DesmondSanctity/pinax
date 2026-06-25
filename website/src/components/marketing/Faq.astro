@@ -2,8 +2,60 @@
 import { faq } from '~/data/faq';
 ---
 
-<section class="hairline border-t" style="background: var(--color-panel)">
-  <div class="container-page py-24 sm:py-32">
+<section class="hairline relative overflow-hidden border-t" style="background: var(--color-panel)">
+  <div class="container-page relative py-24 sm:py-32">
+    <!-- Decorative marginalia: shown only when the gutters are wide enough
+         (xl: ~1280px+) so they never overlap the centered FAQ list. -->
+    <aside
+      aria-hidden="true"
+      class="pointer-events-none absolute top-32 left-4 hidden w-[200px] -rotate-[3deg] select-none xl:block"
+    >
+      <div
+        class="hairline rounded-md border px-3 py-2.5 shadow-[0_1px_0_var(--color-hairline)]"
+        style="background: var(--color-bg); opacity: 0.78"
+      >
+        <div
+          class="mb-1.5 font-mono text-[9px] tracking-[0.18em] uppercase"
+          style="color: var(--color-primary); opacity: 0.8"
+        >
+          manifest.json
+        </div>
+        <pre class="m-0 p-0 font-mono text-[10.5px] leading-[1.55]" style="background: transparent; color: var(--color-muted)">{`{
+  "name": "stripe",
+  "source": "sitemap",
+  "pages": 142,
+  "bytes": 31408,
+  "indexedAt":
+    "2026-06-25"
+}`}</pre>
+      </div>
+    </aside>
+
+    <aside
+      aria-hidden="true"
+      class="pointer-events-none absolute top-48 right-4 hidden w-[210px] rotate-[2deg] select-none xl:block"
+    >
+      <div
+        class="hairline rounded-md border px-3 py-2.5 shadow-[0_1px_0_var(--color-hairline)]"
+        style="background: var(--color-bg); opacity: 0.78"
+      >
+        <div
+          class="mb-1.5 font-mono text-[9px] tracking-[0.18em] uppercase"
+          style="color: var(--color-primary); opacity: 0.8"
+        >
+          tool call
+        </div>
+        <pre class="m-0 p-0 font-mono text-[10.5px] leading-[1.55]" style="background: transparent; color: var(--color-muted)">{`> search_pages
+    "PaymentIntent"
+
+← 7 hits  · 38 ms
+  /api/payment_intents
+  /api/payment_intents
+                /confirm
+  ...`}</pre>
+      </div>
+    </aside>
+
     <header class="mb-12 max-w-2xl">
       <p
         class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
