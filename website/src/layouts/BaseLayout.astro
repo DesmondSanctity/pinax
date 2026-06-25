@@ -1,0 +1,57 @@
+---
+import '~/styles/globals.css';
+import { site } from '~/lib/site';
+import { buildSeo } from '~/lib/seo';
+import TopNav from '~/components/nav/TopNav.astro';
+import Footer from '~/components/nav/Footer.astro';
+
+type Props = {
+  title?: string | undefined;
+  description?: string | undefined;
+  path?: string | undefined;
+  showNav?: boolean | undefined;
+  showFooter?: boolean | undefined;
+};
+
+const {
+  title,
+  description,
+  path = Astro.url.pathname,
+  showNav = true,
+  showFooter = true,
+} = Astro.props;
+
+const seo = buildSeo({ title, description, path });
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FAF7F1" />
+    <title>{seo.title}</title>
+    <meta name="description" content={seo.description} />
+    <link rel="canonical" href={seo.canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={seo.title} />
+    <meta property="og:description" content={seo.description} />
+    <meta property="og:url" content={seo.canonical} />
+    <meta property="og:image" content={seo.ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  </head>
+  <body class="flex min-h-screen flex-col antialiased">
+    {showNav && <TopNav />}
+    <main class="flex-1">
+      <slot />
+    </main>
+    {showFooter && <Footer />}
+    <slot name="after-footer" />
+    <span class="sr-only">{site.name}</span>
+  </body>
+</html>

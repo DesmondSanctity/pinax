@@ -1,0 +1,59 @@
+---
+import MarketingLayout from '~/layouts/MarketingLayout.astro';
+import { catalog, allTags, catalogVersion } from '~/data/catalog';
+---
+
+<MarketingLayout title="Catalog" description="Every docs site indexed in the Pinax catalog.">
+  <section class="container-page py-16">
+    <header class="hairline mb-10 border-b pb-6">
+      <p
+        class="mb-2 text-[11px] font-semibold tracking-[0.18em] uppercase"
+        style="color: var(--color-muted)"
+      >
+        Curated docs · version {catalogVersion}
+      </p>
+      <h1 class="font-serif text-4xl tracking-tight" style="color: var(--color-fg)">Catalog</h1>
+      <p class="mt-3 max-w-2xl text-base" style="color: var(--color-muted)">
+        {catalog.length} docs sites you can index with one command. Anything containing <code
+          >://</code
+        >, a dot or a slash is treated as a URL, so
+        <code>pinax add &lt;url&gt;</code> still works.
+      </p>
+    </header>
+
+    <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        catalog.map((entry) => (
+          <li class="hairline rounded-lg border p-5" style="background: var(--color-panel)">
+            <p class="font-serif text-lg" style="color: var(--color-fg)">
+              {entry.displayName}
+            </p>
+            <p class="mt-1 truncate text-xs" style="color: var(--color-muted)">
+              {entry.url}
+            </p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              {entry.tags.map((tag) => (
+                <span
+                  class="hairline rounded-full border px-2 py-0.5 text-[10px] tracking-wider uppercase"
+                  style="color: var(--color-muted)"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <code
+              class="hairline mt-4 block rounded-md border px-3 py-2 text-xs"
+              style="background: var(--color-bg); color: var(--color-fg)"
+            >
+              pinax add {entry.key}
+            </code>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="mt-10 text-xs" style="color: var(--color-muted)">
+      Tags: {allTags.join(' · ')}
+    </p>
+  </section>
+</MarketingLayout>
