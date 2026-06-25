@@ -1,0 +1,34 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '~/components/docs/Sidebar.astro';
+
+type Props = {
+  title: string;
+  description?: string | undefined;
+};
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="container-page grid grid-cols-1 gap-10 py-10 lg:grid-cols-[14rem_minmax(0,1fr)]">
+    <aside class="lg:sticky lg:top-20 lg:self-start">
+      <Sidebar />
+    </aside>
+    <article class="prose prose-neutral max-w-none">
+      <header class="not-prose mb-8 border-b pb-6" style="border-color: var(--color-hairline)">
+        <h1 class="text-4xl font-medium tracking-tight" style="color: var(--color-fg)">
+          {title}
+        </h1>
+        {
+          description && (
+            <p class="mt-3 text-base" style="color: var(--color-muted)">
+              {description}
+            </p>
+          )
+        }
+      </header>
+      <slot />
+    </article>
+  </div>
+</BaseLayout>

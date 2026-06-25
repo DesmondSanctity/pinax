@@ -1,0 +1,14 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+type Props = {
+  title?: string | undefined;
+  description?: string | undefined;
+};
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <slot />
+</BaseLayout>

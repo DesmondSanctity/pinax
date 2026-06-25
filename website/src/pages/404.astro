@@ -1,0 +1,27 @@
+---
+import MarketingLayout from '~/layouts/MarketingLayout.astro';
+---
+
+<MarketingLayout title="Not found" description="That page doesn't exist.">
+  <section
+    class="container-page flex min-h-[50vh] flex-col items-center justify-center py-24 text-center"
+  >
+    <p
+      class="mb-4 text-[11px] font-semibold tracking-[0.18em] uppercase"
+      style="color: var(--color-muted)"
+    >
+      404
+    </p>
+    <h1 class="font-serif text-5xl tracking-tight" style="color: var(--color-fg)">Nothing here.</h1>
+    <p class="mt-4 max-w-md" style="color: var(--color-muted)">
+      The page you're looking for has moved, doesn't exist, or never did.
+    </p>
+    <a
+      href="/"
+      class="mt-8 rounded-md px-4 py-2 text-sm font-medium"
+      style="background: var(--color-primary); color: var(--color-bg)"
+    >
+      Back home
+    </a>
+  </section>
+</MarketingLayout>

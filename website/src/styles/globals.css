@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Base typography defaults for the cream brand. */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  a {
+    color: var(--color-primary);
+    text-underline-offset: 0.18em;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-bg);
+  }
+}
+
+/* Page container shared by every layout. */
+@utility container-page {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@utility container-prose {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@utility hairline {
+  border-color: var(--color-hairline);
+}

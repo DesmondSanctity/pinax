@@ -1,0 +1,30 @@
+---
+import { site } from '~/lib/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="hairline mt-24 border-t">
+  <div
+    class="container-page flex flex-col gap-4 py-10 text-sm sm:flex-row sm:items-center sm:justify-between"
+    style="color: var(--color-muted)"
+  >
+    <p>
+      <span class="font-serif" style="color: var(--color-fg)">{site.name}</span>
+      <span class="mx-2">·</span>
+      <span>MIT © {year} Pinax contributors</span>
+    </p>
+    <nav class="flex flex-wrap gap-x-5 gap-y-2">
+      <a href="/docs/quick-start" class="hover:underline">Docs</a>
+      <a href="/catalog" class="hover:underline">Catalog</a>
+      <a href={site.repo} class="hover:underline" target="_blank" rel="noopener">GitHub</a>
+      <a href={site.releases} class="hover:underline" target="_blank" rel="noopener">Releases</a>
+      <a
+        href={`${site.repo}/blob/main/SECURITY.md`}
+        class="hover:underline"
+        target="_blank"
+        rel="noopener">Security</a
+      >
+    </nav>
+  </div>
+</footer>
