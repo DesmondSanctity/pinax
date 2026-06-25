@@ -18,7 +18,7 @@ pinax serve
 
 Reads JSON-RPC from stdin and writes to stdout. This is what every MCP
 client launches when you wire up its config file. You almost never run this
-in a terminal yourself — point your client at it instead. See the per-client
+in a terminal yourself - point your client at it instead. See the per-client
 guides under [Clients](/docs/clients/claude-desktop).
 
 To pin a single manifest (useful for client-side resource hygiene):
@@ -35,10 +35,10 @@ pinax serve --http --port 8423
 
 Three endpoints are mounted:
 
-- `http://localhost:8423/` — dark-themed log viewer (every tool call your
+- `http://localhost:8423/` - dark-themed log viewer (every tool call your
   agent makes, filterable per docs site).
-- `http://localhost:8423/mcp` — Streamable HTTP MCP endpoint.
-- `http://localhost:8423/sse` — legacy SSE endpoint for older clients.
+- `http://localhost:8423/mcp` - Streamable HTTP MCP endpoint.
+- `http://localhost:8423/sse` - legacy SSE endpoint for older clients.
 
 Use HTTP mode when you want to watch what an agent is actually doing.
 The log UI keeps history per-manifest and refreshes live.
@@ -49,7 +49,7 @@ The log UI keeps history per-manifest and refreshes live.
 | -------- | ----------- | ------------------------------------------ |
 | `--http` | off         | switches from stdio to HTTP transport      |
 | `--port` | `8423`      | TCP port for the HTTP listener             |
-| `--host` | `127.0.0.1` | bind address — keep on loopback by default |
+| `--host` | `127.0.0.1` | bind address - keep on loopback by default |
 
 The MCP endpoints don't authenticate, so binding to anything other than
 `127.0.0.1` makes your indexed docs queryable by anyone on the network.

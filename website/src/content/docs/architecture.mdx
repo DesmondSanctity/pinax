@@ -12,8 +12,8 @@ followed by the on-disk layout.
 ## The pipeline
 
 A URL becomes a manifest, and a manifest becomes a set of tools. Pinax
-keeps the two halves loosely coupled — the on-disk manifest is the only
-contract between them — so each can change independently.
+keeps the two halves loosely coupled - the on-disk manifest is the only
+contract between them - so each can change independently.
 
 ### Add: URL → manifest
 
@@ -70,7 +70,7 @@ The crawler tries three strategies and stops at the first that yields a
 non-empty page list:
 
 1. **`llms.txt` probe.** Fetches `/llms.txt` at the host root. If present,
-   every URL it lists becomes a manifest entry — no BFS at all.
+   every URL it lists becomes a manifest entry - no BFS at all.
 2. **Sitemap parse.** Walks every URL declared in `/sitemap.xml` (and any
    referenced sitemap indexes), filtered by the host.
 3. **Bounded BFS.** Starts at the homepage, follows in-host links breadth-
@@ -91,7 +91,7 @@ on every live fetch.
 - HTML is parsed, navigation/footer/cookie chrome is stripped, then
   converted to Markdown.
 
-Page titles are not produced by the extractor — they come from the
+Page titles are not produced by the extractor - they come from the
 crawler, which reads the HTML `<title>` element and falls back to a
 URL-slug title when none is present (e.g. sitemap-only sites). Sections
 are derived from URL path segments, not headings.
@@ -105,14 +105,14 @@ contains:
 - One entry per page: URL, title, and section path.
 - The tag set (when added through the catalog).
 
-It's written atomically — Pinax writes to a temp file in the same
+It's written atomically - Pinax writes to a temp file in the same
 directory then renames into place, so a half-completed `pinax add` never
 corrupts the on-disk state.
 
 ## Search
 
 A small BM25 index over URL paths, titles, and section names is built
-alongside each manifest. The actual page bodies are _not_ indexed —
+alongside each manifest. The actual page bodies are _not_ indexed -
 search hits return URLs which `get_page` fetches live. This is by design:
 it keeps the on-disk footprint tiny and the live-fetch policy honest.
 

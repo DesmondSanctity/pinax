@@ -55,7 +55,7 @@ pinax config claude --split    # one entry per manifest
 
 ## 3. Restart Claude Desktop
 
-Quit and relaunch — the app only reads the config file at startup. You
+Quit and relaunch - the app only reads the config file at startup. You
 should see a small plug icon in the conversation header confirming the
 server is connected.
 
@@ -74,7 +74,7 @@ from the live page.
 - **"Failed to load tools"** in the Claude UI usually means `pinax` isn't
   on the PATH the desktop app inherits. Use an absolute path in `command`
   (the output of `which pinax`).
-- **No tools listed at all** — quit Claude Desktop fully (Cmd-Q on macOS,
+- **No tools listed at all** - quit Claude Desktop fully (Cmd-Q on macOS,
   not just close the window) and relaunch.
 - For deeper debugging, run `pinax serve --http` in a terminal and watch
   the log UI at `http://localhost:8423/` while Claude makes calls.

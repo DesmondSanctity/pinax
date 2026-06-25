@@ -46,7 +46,7 @@ Returns URL paths grouped by top-level section with page counts:
 ]
 ```
 
-Cheap call — sections are derived from the manifest in memory.
+Cheap call - sections are derived from the manifest in memory.
 
 ## `search_pages`
 
@@ -106,7 +106,7 @@ the model wants to walk a topic exhaustively.
 
 Live-fetches the URL with `Accept: text/markdown` first, falls back to
 HTML extraction, and returns clean Markdown. The page cache is consulted
-first — entries older than the TTL trigger a refetch.
+first - entries older than the TTL trigger a refetch.
 
 `get_page` is the only tool that hits the network at call time. The
 others read from the in-memory manifest.

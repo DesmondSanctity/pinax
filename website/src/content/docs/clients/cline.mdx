@@ -6,7 +6,7 @@ order: 4
 ---
 
 Cline ships with its own MCP config file. Open the Cline panel, click the
-settings cog, and select "Edit MCP settings" — or open the file directly:
+settings cog, and select "Edit MCP settings" - or open the file directly:
 
 ```
 <VS Code user dir>/cline_mcp_settings.json
@@ -45,11 +45,11 @@ Code window.
 
 In a Cline conversation, the new Pinax tools surface under the MCP
 section. Cline tends to be more explicit than Claude/Cursor about which
-tool it's about to call — useful while iterating on a new docs site.
+tool it's about to call - useful while iterating on a new docs site.
 
 ## Troubleshooting
 
 - Cline runs inside the VS Code extension host; if `pinax` isn't on that
   process's PATH, use the absolute path from `which pinax`.
-- The Cline MCP panel surfaces server stdout/stderr — start there before
+- The Cline MCP panel surfaces server stdout/stderr - start there before
   reaching for `pinax serve --http`.

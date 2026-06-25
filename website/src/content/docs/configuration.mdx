@@ -21,7 +21,7 @@ environment variables for the few things that need to vary per machine.
         └── index.bin     # BM25 index for search_pages
 ```
 
-- Manifests are written atomically — a half-completed `pinax add` never
+- Manifests are written atomically - a half-completed `pinax add` never
   corrupts the on-disk state.
 - The page cache is read with TTLs applied at read time, so you can hand-
   edit `cache.db` if you want to invalidate everything (`pinax cache clear`
