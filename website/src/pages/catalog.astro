@@ -23,6 +23,15 @@ import { catalog, allTags, catalogVersion } from '~/data/catalog';
         >, a dot or a slash is treated as a URL, so
         <code>pinax add &lt;url&gt;</code> still works.
       </p>
+      <div class="mt-5 max-w-md">
+        <p
+          class="mb-2 text-[11px] font-semibold tracking-[0.18em] uppercase"
+          style="color: var(--color-muted)"
+        >
+          Pull the latest list
+        </p>
+        <CommandCard command="pinax catalog refresh" size="sm" />
+      </div>
     </header>
 
     <div class="mb-8">
@@ -98,5 +107,28 @@ import { catalog, allTags, catalogVersion } from '~/data/catalog';
         >.
       </p>
     </div>
+
+    <aside
+      class="hairline mt-12 flex flex-col items-start justify-between gap-4 rounded-lg border p-6 sm:flex-row sm:items-center"
+      style="background: var(--color-panel)"
+    >
+      <div>
+        <p class="font-serif text-lg" style="color: var(--color-fg)">Want a docs site added?</p>
+        <p class="mt-1 text-sm" style="color: var(--color-muted)">
+          Open a request and we'll review it for the next catalog version.
+        </p>
+      </div>
+      <a
+        href={`https://github.com/DesmondSanctity/pinax/issues/new?title=${encodeURIComponent('Catalog request: <name>')}&body=${encodeURIComponent('**Docs site name:**\n\n**Base URL:**\n\n**Why it belongs in the catalog (one line):**\n\n**Suggested tags:**\n')}&labels=catalog`}
+        target="_blank"
+        rel="noopener"
+        class="hairline inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:border-[color:var(--color-fg)]"
+        style="color: var(--color-fg); background: var(--color-bg)"
+      >
+        <Icon name="simple-icons:github" width={16} height={16} />
+        Open a request
+        <Icon name="lucide:external-link" width={14} height={14} />
+      </a>
+    </aside>
   </section>
 </MarketingLayout>
