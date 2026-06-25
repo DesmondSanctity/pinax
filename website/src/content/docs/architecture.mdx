@@ -89,17 +89,17 @@ SSE are available with `--http`.
 ## Package map
 
 ```
-cmd/pinax/         CLI entry point and argument parser
-internal/buildinfo/ Version + User-Agent shared across CLI and server
-internal/crawler/   llms.txt probe, sitemap parser, BFS, platform detection
-internal/extractor/ HTML/Markdown → clean Markdown
-internal/manifest/  Atomic JSON manifests + BM25 indexes
-internal/cache/     SQLite page cache (WAL, TTL applied at read time)
-internal/logger/    SQLite tool-call log + HTML log viewer
-internal/mcp/       MCP server, transport, tools, middleware
-internal/preflight/ Content-density check that gates `pinax add`
-internal/doctor/    Health diagnosis used by `pinax doctor`
-internal/catalog/   Built-in catalog + cache loader
+cmd/pinax/            CLI entry point and argument parser
+internal/buildinfo/   Version + User-Agent shared across CLI and server
+internal/crawler/     llms.txt probe, sitemap parser, BFS, platform detection
+internal/extractor/   HTML/Markdown → clean Markdown
+internal/manifest/    Atomic JSON manifests + BM25 indexes
+internal/cache/       SQLite page cache (WAL, TTL applied at read time)
+internal/logger/      SQLite tool-call log + HTML log viewer
+internal/mcp/         MCP server, transport, tools, middleware
+internal/preflight/   Content-density check that gates `pinax add`
+internal/doctor/      Health diagnosis used by `pinax doctor`
+internal/catalog/     Built-in catalog + cache loader
 ```
 
 Each package has its own README in the source tree.

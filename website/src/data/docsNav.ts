@@ -15,15 +15,6 @@ export const docsGroups: readonly DocsGroup[] = [
     ],
   },
   {
-    label: 'Reference',
-    items: [
-      { label: 'CLI', slug: 'cli' },
-      { label: 'MCP tools', slug: 'mcp-tools' },
-      { label: 'Architecture', slug: 'architecture' },
-      { label: 'Contributing', slug: 'contributing' },
-    ],
-  },
-  {
     label: 'Clients',
     items: [
       { label: 'Claude Desktop', slug: 'clients/claude-desktop' },
@@ -31,6 +22,15 @@ export const docsGroups: readonly DocsGroup[] = [
       { label: 'Cursor', slug: 'clients/cursor' },
       { label: 'Windsurf', slug: 'clients/windsurf' },
       { label: 'Cline', slug: 'clients/cline' },
+    ],
+  },
+  {
+    label: 'Reference',
+    items: [
+      { label: 'CLI', slug: 'cli' },
+      { label: 'MCP tools', slug: 'mcp-tools' },
+      { label: 'Architecture', slug: 'architecture' },
+      { label: 'Contributing', slug: 'contributing' },
     ],
   },
 ];
