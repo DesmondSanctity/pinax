@@ -1,4 +1,10 @@
-export type ClientId = 'claude-desktop' | 'claude-code' | 'cursor' | 'windsurf' | 'cline' | 'copilot';
+export type ClientId =
+  | 'claude-desktop'
+  | 'claude-code'
+  | 'cursor'
+  | 'windsurf'
+  | 'cline'
+  | 'copilot';
 
 export type Client = {
   id: ClientId;
