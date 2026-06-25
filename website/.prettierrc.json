@@ -8,7 +8,18 @@
   "proseWrap": "preserve",
   "embeddedLanguageFormatting": "off",
   "overrides": [
-    { "files": ["*.md", "*.mdx"], "options": { "singleQuote": false } },
-    { "files": ["*.json", "*.jsonc"], "options": { "singleQuote": false, "trailingComma": "none" } }
+    {
+      "files": ["*.md", "*.mdx"],
+      "options": {
+        "singleQuote": false
+      }
+    },
+    {
+      "files": ["*.json", "*.jsonc"],
+      "options": {
+        "singleQuote": false,
+        "trailingComma": "none"
+      }
+    }
   ]
 }
