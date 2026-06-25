@@ -61,8 +61,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
     padding: 0;
     border-radius: 6px;
     border: 1px solid var(--color-hairline);

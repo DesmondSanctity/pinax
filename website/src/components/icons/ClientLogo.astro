@@ -1,0 +1,107 @@
+---
+import type { ClientId } from '~/data/clients';
+
+type Props = { id: ClientId; size?: number };
+const { id, size = 32 } = Astro.props;
+---
+
+{
+  id === 'claude-desktop' && (
+    <span
+      class="inline-flex items-center justify-center rounded-md"
+      style={`width:${size}px;height:${size}px;background:#F4EAE0;color:#D97757;border:1px solid var(--color-hairline)`}
+      aria-hidden="true"
+    >
+      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2 13.6 8 18 4.6 16 11l6 1.4-6 1.4 2 6.4-4.4-3.4L12 26l-1.6-7.2L6 22.2 8 14l-6-1.6 6-1.4-2-6.4L10.4 8 12 2z" />
+      </svg>
+    </span>
+  )
+}
+
+{
+  id === 'claude-code' && (
+    <span
+      class="inline-flex items-center justify-center rounded-md font-mono"
+      style={`width:${size}px;height:${size}px;background:#1B1A17;color:#D97757`}
+      aria-hidden="true"
+    >
+      <svg
+        width={size * 0.5}
+        height={size * 0.5}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="6 8 2 12 6 16" />
+        <polyline points="18 8 22 12 18 16" />
+        <line x1="14" y1="6" x2="10" y2="18" />
+      </svg>
+    </span>
+  )
+}
+
+{
+  id === 'cursor' && (
+    <span
+      class="inline-flex items-center justify-center rounded-md"
+      style={`width:${size}px;height:${size}px;background:#0A0A0A;color:#FFFFFF`}
+      aria-hidden="true"
+    >
+      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M5 3 5 19 9.5 14.5 12.5 21 15 20 12 13.5 18.5 13.5 5 3z" />
+      </svg>
+    </span>
+  )
+}
+
+{
+  id === 'windsurf' && (
+    <span
+      class="inline-flex items-center justify-center rounded-md"
+      style={`width:${size}px;height:${size}px;background:#0FB8B0;color:#FFFFFF`}
+      aria-hidden="true"
+    >
+      <svg
+        width={size * 0.6}
+        height={size * 0.6}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M3 14c3-4 6-4 9 0s6 4 9 0" />
+        <path d="M3 19c3-4 6-4 9 0s6 4 9 0" />
+      </svg>
+    </span>
+  )
+}
+
+{
+  id === 'cline' && (
+    <span
+      class="inline-flex items-center justify-center rounded-md font-mono"
+      style={`width:${size}px;height:${size}px;background:#1B1A17;color:#7CDC6A`}
+      aria-hidden="true"
+    >
+      <svg
+        width={size * 0.55}
+        height={size * 0.55}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="5 8 10 12 5 16" />
+        <line x1="13" y1="17" x2="19" y2="17" />
+      </svg>
+    </span>
+  )
+}
