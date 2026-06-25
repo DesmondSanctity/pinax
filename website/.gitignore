@@ -10,3 +10,8 @@ dist/
 .netlify/
 .wrangler/
 pnpm-debug.log*
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
