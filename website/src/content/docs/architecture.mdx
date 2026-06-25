@@ -11,23 +11,58 @@ followed by the on-disk layout.
 
 ## The pipeline
 
-```
-            ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-URL ──────▶ │  preflight   │──▶│   crawler    │──▶│  extractor   │──▶ manifest.json
-            └──────────────┘   └──────────────┘   └──────────────┘
-              density gate      llms.txt →           HTML/MD →
-              one-shot fetch    sitemap →            clean Markdown
-                                bounded BFS
-```
+A URL becomes a manifest, and a manifest becomes a set of tools. Pinax
+keeps the two halves loosely coupled — the on-disk manifest is the only
+contract between them — so each can change independently.
+
+### Add: URL → manifest
 
 ```
-manifest.json ──▶ BM25 index ──▶  mcp server ──▶ stdio / HTTP transport
-                                  list_docs
-                                  list_sections    ▶ in-memory
-                                  search_pages     ▶ in-memory
-                                  get_section_pages▶ in-memory
-                                  get_page         ▶ network + SQLite cache
+            ┌──────────────┐    ┌──────────────┐
+URL ──────▶ │   crawler    │──▶ │  preflight   │──▶ manifest.json
+            └──────────────┘    └──────────────┘
+              llms.txt →          density gate
+              sitemap →           (samples, extracts,
+              bounded BFS          refuses if thin)
 ```
+
+`pinax add` runs discovery then a gate. The crawler tries `llms.txt`,
+then `sitemap.xml`, then bounded BFS, and stops at the first strategy
+that yields pages. The preflight gate then samples that page set,
+extracts each sample to measure prose density, and refuses to write the
+manifest when the site is mostly chrome.
+
+### Serve: manifest → MCP tools
+
+```
+manifest.json ──▶ BM25 index ──▶ mcp server ──▶ stdio / HTTP transport
+                                  list_docs
+                                  list_sections
+                                  search_pages
+                                  get_section_pages
+                                  get_page
+```
+
+`pinax serve` mounts every manifest under `~/.pinax/servers/` into a
+single MCP server. Four of the five tools serve from in-memory state;
+only `get_page` reaches the network.
+
+### Tool call: `get_page` lifecycle
+
+```
+agent ─▶ get_page(url)
+           │
+           ├─ cache hit  ────────────────────────────▶ clean Markdown
+           │
+           └─ cache miss ─▶ HTTP fetch ─▶ extractor ─▶ cache.Set ─▶ clean Markdown
+                                          HTML/MD →
+                                          clean Markdown
+```
+
+Cached pages return immediately. On a miss, Pinax fetches the URL with
+the configured `User-Agent`, runs the extractor to strip nav/footer
+chrome and normalise HTML to Markdown, and stores the result in the
+SQLite cache (WAL mode, TTL applied at read time) before returning it.
 
 ## Discovery, in order
 
@@ -48,13 +83,18 @@ when a BFS-derived manifest has thin pages.
 
 ## Extraction
 
-The extractor accepts whatever the discovery step found:
+The extractor turns whatever Pinax fetched into clean Markdown. It runs
+in two places: inside preflight during sampling, and inside `get_page`
+on every live fetch.
 
 - `text/markdown` responses pass through with a light cleanup.
 - HTML is parsed, navigation/footer/cookie chrome is stripped, then
   converted to Markdown.
-- The first `<h1>` becomes the page title; sections are derived from URL
-  path segments, not headings.
+
+Page titles are not produced by the extractor — they come from the
+crawler, which reads the HTML `<title>` element and falls back to a
+URL-slug title when none is present (e.g. sitemap-only sites). Sections
+are derived from URL path segments, not headings.
 
 ## Manifest
 
@@ -62,7 +102,7 @@ The extractor accepts whatever the discovery step found:
 contains:
 
 - Base URL, display name, discovery strategy used, last-refresh timestamp.
-- One entry per page: URL, title, section path, prose-length estimate.
+- One entry per page: URL, title, and section path.
 - The tag set (when added through the catalog).
 
 It's written atomically — Pinax writes to a temp file in the same
@@ -78,13 +118,10 @@ it keeps the on-disk footprint tiny and the live-fetch policy honest.
 
 ## Serve
 
-`pinax serve` mounts every manifest from `~/.pinax/servers/` into a single
-MCP server with five tools. The unified mode lets one configured server
-cover every docs site you've added; the optional `docs` argument scopes
-calls when an agent wants to narrow.
-
-Transport is `mark3labs/mcp-go`: stdio is the default, Streamable HTTP +
-SSE are available with `--http`.
+The unified server lets one MCP configuration cover every docs site
+you've added; the optional `docs` argument scopes calls when an agent
+wants to narrow. Transport is `mark3labs/mcp-go`: stdio is the default,
+Streamable HTTP + SSE are available with `--http`.
 
 ## Package map
 
