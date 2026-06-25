@@ -50,13 +50,29 @@ only `get_page` reaches the network.
 ### Tool call: `get_page` lifecycle
 
 ```
-agent ─▶ get_page(url)
-           │
-           ├─ cache hit  ────────────────────────────▶ clean Markdown
-           │
-           └─ cache miss ─▶ HTTP fetch ─▶ extractor ─▶ cache.Set ─▶ clean Markdown
-                                          HTML/MD →
-                                          clean Markdown
+       agent
+         │
+         ▼
+     get_page(url)
+         │
+         ▼
+    ┌─────────┐    hit
+    │  cache  │ ─────────────▶ clean Markdown
+    └─────────┘
+         │ miss
+         ▼
+     HTTP fetch
+         │
+         ▼
+      extractor
+   (HTML/MD →
+    clean Markdown)
+         │
+         ▼
+      cache.Set
+         │
+         ▼
+    clean Markdown
 ```
 
 Cached pages return immediately. On a miss, Pinax fetches the URL with
