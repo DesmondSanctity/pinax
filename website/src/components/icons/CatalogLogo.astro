@@ -1,0 +1,38 @@
+---
+import { Icon } from 'astro-icon/components';
+
+type Props = { entryKey: string; size?: number };
+const { entryKey, size = 32 } = Astro.props;
+
+type Mark = { icon: string; bg: string; fg: string };
+
+const marks: Record<string, Mark> = {
+  anthropic: { icon: 'simple-icons:anthropic', bg: '#F4EAE0', fg: '#D97757' },
+  convex: { icon: 'simple-icons:convex', bg: '#FDECEB', fg: '#EE342F' },
+  django: { icon: 'simple-icons:django', bg: '#E5EFE9', fg: '#092E20' },
+  fastapi: { icon: 'simple-icons:fastapi', bg: '#E6F4F2', fg: '#009688' },
+  go: { icon: 'simple-icons:go', bg: '#E6F6FA', fg: '#00ADD8' },
+  kubernetes: { icon: 'simple-icons:kubernetes', bg: '#E8EEFB', fg: '#326CE5' },
+  mcp: { icon: 'lucide:plug', bg: '#EEF1F8', fg: '#1E3A8A' },
+  modal: { icon: 'simple-icons:modal', bg: '#EFE9F8', fg: '#7B3FE4' },
+  nextjs: { icon: 'simple-icons:nextdotjs', bg: '#1B1A17', fg: '#FFFFFF' },
+  openai: { icon: 'simple-icons:openai', bg: '#E8ECF1', fg: '#202123' },
+  react: { icon: 'simple-icons:react', bg: '#E6F8FC', fg: '#0FB7E0' },
+  stripe: { icon: 'simple-icons:stripe', bg: '#EFEEFD', fg: '#635BFF' },
+  supabase: { icon: 'simple-icons:supabase', bg: '#E7F8EF', fg: '#1F8454' },
+  tailwind: { icon: 'simple-icons:tailwindcss', bg: '#E6F6FB', fg: '#06B6D4' },
+  vercel: { icon: 'simple-icons:vercel', bg: '#1B1A17', fg: '#FFFFFF' },
+};
+
+const fallback: Mark = { icon: 'lucide:book-open', bg: '#F0EDE6', fg: '#1E3A8A' };
+const { icon, bg, fg } = marks[entryKey] ?? fallback;
+const glyph = Math.round(size * 0.55);
+---
+
+<span
+  class="inline-flex items-center justify-center rounded-md"
+  style={`width:${size}px;height:${size}px;background:${bg};color:${fg};border:1px solid var(--color-hairline)`}
+  aria-hidden="true"
+>
+  <Icon name={icon} width={glyph} height={glyph} />
+</span>
