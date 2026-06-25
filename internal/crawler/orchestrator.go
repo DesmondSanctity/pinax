@@ -2,6 +2,8 @@ package crawler
 
 import (
 	"context"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -34,6 +36,11 @@ func Crawl(ctx context.Context, baseURL string, opts Options) (*CrawlResult, err
 }
 
 func buildResult(pages []Page, baseURL, platform, source string, start time.Time) *CrawlResult {
+	for i := range pages {
+		if pages[i].Title == "" {
+			pages[i].Title = titleFromURL(pages[i].URL)
+		}
+	}
 	return &CrawlResult{
 		Pages:     pages,
 		BaseURL:   baseURL,
@@ -46,4 +53,35 @@ func buildResult(pages []Page, baseURL, platform, source string, start time.Time
 			Duration:  time.Since(start),
 		},
 	}
+}
+
+// titleFromURL derives a human-readable title from a URL when the discovery
+// source didn't provide one (typical for sitemap-only sites). Strips common
+// page extensions, takes the last non-empty path segment, and turns slug
+// separators into spaces. Falls back to the host when the path is empty.
+func titleFromURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	segs := strings.Split(strings.Trim(u.Path, "/"), "/")
+	var slug string
+	for i := len(segs) - 1; i >= 0; i-- {
+		if s := strings.TrimSpace(segs[i]); s != "" {
+			slug = s
+			break
+		}
+	}
+	if slug == "" {
+		return u.Host
+	}
+	if dec, err := url.PathUnescape(slug); err == nil {
+		slug = dec
+	}
+	for _, ext := range []string{".md", ".mdx", ".html", ".htm"} {
+		slug = strings.TrimSuffix(slug, ext)
+	}
+	slug = strings.ReplaceAll(slug, "-", " ")
+	slug = strings.ReplaceAll(slug, "_", " ")
+	return strings.TrimSpace(slug)
 }

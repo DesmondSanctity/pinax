@@ -87,3 +87,50 @@ func errorsAs(err error, target **crawler.UnsupportedPlatformError) bool {
 	}
 	return false
 }
+
+// Sitemap-derived pages have no title in the source; the orchestrator should
+// fall back to a slugged version of the URL so MCP clients show something
+// useful in search_pages / list_sections output.
+func TestCrawl_FillsTitleFromURLWhenMissing(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/", "/docs":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = fmt.Fprintln(w, `<html><body>ok</body></html>`)
+		case "/sitemap.xml":
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = fmt.Fprintf(w, `<urlset>
+                <url><loc>%[1]s/docs/getting-started</loc></url>
+                <url><loc>%[1]s/docs/api/auth_tokens.md</loc></url>
+                <url><loc>%[1]s/docs/</loc></url>
+            </urlset>`, srv.URL)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	res, err := crawler.Crawl(context.Background(), srv.URL+"/docs", crawler.DefaultOptions())
+	if err != nil {
+		t.Fatalf("Crawl: %v", err)
+	}
+	want := map[string]string{
+		srv.URL + "/docs/getting-started":    "getting started",
+		srv.URL + "/docs/api/auth_tokens.md": "auth tokens",
+	}
+	for _, p := range res.Pages {
+		if exp, ok := want[p.URL]; ok {
+			if p.Title != exp {
+				t.Errorf("title for %s = %q, want %q", p.URL, p.Title, exp)
+			}
+			delete(want, p.URL)
+		}
+		if p.Title == "" {
+			t.Errorf("page %s still has empty title", p.URL)
+		}
+	}
+	for u := range want {
+		t.Errorf("expected page %s not in result", u)
+	}
+}

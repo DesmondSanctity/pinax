@@ -72,7 +72,10 @@ make build
 ## Quick start
 
 ```sh
-# 1. Index a docs site (creates ~/.pinax/servers/<name>.json + .bm25 index)
+# 1. Index a docs site from the curated catalog…
+pinax add stripe
+
+# …or any URL
 pinax add https://docs.convex.dev
 
 # 2. List what you've indexed
@@ -80,7 +83,7 @@ pinax list
 
 # 3. Serve every indexed site at once over stdio (what MCP clients launch)
 pinax serve
-# …or pin a single one: pinax serve docs-convex-dev
+# …or pin a single one: pinax serve stripe
 
 # Or serve over HTTP with the log viewer
 pinax serve --http --port 8423
@@ -89,11 +92,26 @@ pinax serve --http --port 8423
 # → http://localhost:8423/sse   (legacy SSE)
 
 # 4. Check a manifest's health (page-count drift, mean prose, etc.)
-pinax doctor docs-convex-dev
+pinax doctor stripe
 ```
 
 In unified mode every tool takes an optional `docs` argument to scope to a
-single site; call `list_docs` to see what's loaded.
+single site; omit it to search across every indexed manifest at once. Call
+`list_docs` to see what's loaded.
+
+### Catalog
+
+`pinax add <name>` resolves through a small built-in catalog (Stripe, React,
+Next.js, Convex, Anthropic, OpenAI, Supabase, Tailwind, FastAPI, Django, Go
+stdlib, Kubernetes, Vercel, Modal, MCP). Anything containing `://`, `.` or
+`/` is still treated as a URL, so existing scripts keep working.
+
+```sh
+pinax catalog list      # show every catalog entry with tags + URL
+pinax catalog refresh   # fetch the latest catalog from GitHub (cached under ~/.pinax/)
+```
+
+Set `PINAX_CATALOG_URL` to point `refresh` at a private/forked catalog.
 
 ### Connect to an MCP client
 
@@ -178,7 +196,7 @@ claude mcp add convex-docs -- pinax serve convex-docs
 ## Commands
 
 ```
-pinax add <url> [--name NAME] [--exclude PATTERN ...] [--max-pages N] [--no-preflight]
+pinax add <url|catalog-name> [--name NAME] [--exclude PATTERN ...] [--max-pages N] [--no-preflight]
 pinax list
 pinax remove <name>
 pinax refresh <name> [--rebuild-index]
@@ -186,7 +204,8 @@ pinax search <name> <query>
 pinax doctor [<name>...] [--json]
 pinax serve [<name>] [--http] [--port N]
 pinax cache clear [--older-than DURATION]
-pinax config claude [--project]
+pinax catalog list|refresh
+pinax config claude [--project] [--split] [--force]
 ```
 
 ## The MCP tools
