@@ -4,55 +4,51 @@ import { faq } from '~/data/faq';
 
 <section class="hairline relative overflow-hidden border-t" style="background: var(--color-panel)">
   <div class="container-page relative py-24 sm:py-32">
-    <!-- Decorative marginalia: shown only when the gutters are wide enough
-         (xl: ~1280px+) so they never overlap the centered FAQ list. -->
+    <!-- Desktop-only editorial mark in the empty left gutter. A vertical
+         hairline anchors three oversized outlined serif glyphs spelling
+         FAQ, with a small mono caption at the foot. Hidden below lg. -->
     <aside
       aria-hidden="true"
-      class="pointer-events-none absolute top-32 left-4 hidden w-[200px] -rotate-[3deg] select-none xl:block"
+      class="pointer-events-none absolute top-24 bottom-24 left-2 hidden w-[120px] select-none lg:flex xl:left-6"
     >
       <div
-        class="hairline rounded-md border px-3 py-2.5 shadow-[0_1px_0_var(--color-hairline)]"
-        style="background: var(--color-bg); opacity: 0.78"
-      >
-        <div
-          class="mb-1.5 font-mono text-[9px] tracking-[0.18em] uppercase"
-          style="color: var(--color-primary); opacity: 0.8"
+        class="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2"
+        style="background: var(--color-hairline)"
+      ></div>
+      <div class="relative flex h-full w-full flex-col items-center justify-center gap-1">
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >F</span>
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >A</span>
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >Q</span>
+        <span
+          class="mt-6 font-mono text-[10px] tracking-[0.22em] uppercase"
+          style="color: var(--color-muted); opacity: 0.7"
         >
-          manifest.json
-        </div>
-        <pre class="m-0 p-0 font-mono text-[10.5px] leading-[1.55]" style="background: transparent; color: var(--color-muted)">{`{
-  "name": "stripe",
-  "source": "sitemap",
-  "pages": 142,
-  "bytes": 31408,
-  "indexedAt":
-    "2026-06-25"
-}`}</pre>
-      </div>
-    </aside>
-
-    <aside
-      aria-hidden="true"
-      class="pointer-events-none absolute top-48 right-4 hidden w-[210px] rotate-[2deg] select-none xl:block"
-    >
-      <div
-        class="hairline rounded-md border px-3 py-2.5 shadow-[0_1px_0_var(--color-hairline)]"
-        style="background: var(--color-bg); opacity: 0.78"
-      >
-        <div
-          class="mb-1.5 font-mono text-[9px] tracking-[0.18em] uppercase"
-          style="color: var(--color-primary); opacity: 0.8"
-        >
-          tool call
-        </div>
-        <pre class="m-0 p-0 font-mono text-[10.5px] leading-[1.55]" style="background: transparent; color: var(--color-muted)">{`> search_pages
-    "PaymentIntent"
-
-← 7 hits  · 38 ms
-  /api/payment_intents
-  /api/payment_intents
-                /confirm
-  ...`}</pre>
+          {faq.length}&nbsp;questions
+        </span>
       </div>
     </aside>
 
@@ -94,3 +90,9 @@ import { faq } from '~/data/faq';
     </div>
   </div>
 </section>
+
+<style>
+  .faq-mark {
+    opacity: 0.55;
+  }
+</style>
