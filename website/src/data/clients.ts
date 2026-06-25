@@ -1,4 +1,4 @@
-export type ClientId = 'claude-desktop' | 'claude-code' | 'cursor' | 'windsurf' | 'cline';
+export type ClientId = 'claude-desktop' | 'claude-code' | 'cursor' | 'windsurf' | 'cline' | 'copilot';
 
 export type Client = {
   id: ClientId;
@@ -37,5 +37,11 @@ export const clients: readonly Client[] = [
     label: 'Cline (VS Code)',
     configPath: 'cline_mcp_settings.json',
     docsHref: '/docs/clients/cline',
+  },
+  {
+    id: 'copilot',
+    label: 'GitHub Copilot',
+    configPath: '.vscode/mcp.json',
+    docsHref: '/docs/clients/copilot',
   },
 ];
