@@ -1,0 +1,105 @@
+---
+title: Architecture
+description: How a URL becomes a manifest, and how a manifest becomes five MCP tools.
+section: reference
+order: 2
+---
+
+Pinax is a single Go binary structured as a handful of focused packages.
+Below is the pipeline a URL takes from `pinax add` to `pinax serve`,
+followed by the on-disk layout.
+
+## The pipeline
+
+```
+            ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+URL ──────▶ │  preflight   │──▶│   crawler    │──▶│  extractor   │──▶ manifest.json
+            └──────────────┘   └──────────────┘   └──────────────┘
+              density gate      llms.txt →           HTML/MD →
+              one-shot fetch    sitemap →            clean Markdown
+                                bounded BFS
+```
+
+```
+manifest.json ──▶ BM25 index ──▶  mcp server ──▶ stdio / HTTP transport
+                                  list_docs
+                                  list_sections    ▶ in-memory
+                                  search_pages     ▶ in-memory
+                                  get_section_pages▶ in-memory
+                                  get_page         ▶ network + SQLite cache
+```
+
+## Discovery, in order
+
+The crawler tries three strategies and stops at the first that yields a
+non-empty page list:
+
+1. **`llms.txt` probe.** Fetches `/llms.txt` at the host root. If present,
+   every URL it lists becomes a manifest entry — no BFS at all.
+2. **Sitemap parse.** Walks every URL declared in `/sitemap.xml` (and any
+   referenced sitemap indexes), filtered by the host.
+3. **Bounded BFS.** Starts at the homepage, follows in-host links breadth-
+   first up to `--max-pages` (default 1500), respects `--exclude` filters,
+   bails on JS-heavy pages.
+
+All three strategies feed the same downstream pipeline. The crawler
+records which strategy fired in the manifest so `pinax doctor` can warn
+when a BFS-derived manifest has thin pages.
+
+## Extraction
+
+The extractor accepts whatever the discovery step found:
+
+- `text/markdown` responses pass through with a light cleanup.
+- HTML is parsed, navigation/footer/cookie chrome is stripped, then
+  converted to Markdown.
+- The first `<h1>` becomes the page title; sections are derived from URL
+  path segments, not headings.
+
+## Manifest
+
+`~/.pinax/servers/<name>/manifest.json` is the source of truth. It
+contains:
+
+- Base URL, display name, discovery strategy used, last-refresh timestamp.
+- One entry per page: URL, title, section path, prose-length estimate.
+- The tag set (when added through the catalog).
+
+It's written atomically — Pinax writes to a temp file in the same
+directory then renames into place, so a half-completed `pinax add` never
+corrupts the on-disk state.
+
+## Search
+
+A small BM25 index over URL paths, titles, and section names is built
+alongside each manifest. The actual page bodies are _not_ indexed —
+search hits return URLs which `get_page` fetches live. This is by design:
+it keeps the on-disk footprint tiny and the live-fetch policy honest.
+
+## Serve
+
+`pinax serve` mounts every manifest from `~/.pinax/servers/` into a single
+MCP server with five tools. The unified mode lets one configured server
+cover every docs site you've added; the optional `docs` argument scopes
+calls when an agent wants to narrow.
+
+Transport is `mark3labs/mcp-go`: stdio is the default, Streamable HTTP +
+SSE are available with `--http`.
+
+## Package map
+
+```
+cmd/pinax/         CLI entry point and argument parser
+internal/buildinfo/ Version + User-Agent shared across CLI and server
+internal/crawler/   llms.txt probe, sitemap parser, BFS, platform detection
+internal/extractor/ HTML/Markdown → clean Markdown
+internal/manifest/  Atomic JSON manifests + BM25 indexes
+internal/cache/     SQLite page cache (WAL, TTL applied at read time)
+internal/logger/    SQLite tool-call log + HTML log viewer
+internal/mcp/       MCP server, transport, tools, middleware
+internal/preflight/ Content-density check that gates `pinax add`
+internal/doctor/    Health diagnosis used by `pinax doctor`
+internal/catalog/   Built-in catalog + cache loader
+```
+
+Each package has its own README in the source tree.

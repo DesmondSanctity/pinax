@@ -1,0 +1,78 @@
+---
+title: Contributing
+description: Build, test, lint, and PR checklist for working on Pinax itself.
+section: reference
+order: 3
+---
+
+Pinax is MIT-licensed Go. Pull requests are welcome — the full contributor
+policy lives in [`CONTRIBUTING.md`](https://github.com/desmondsanctity/pinax/blob/main/CONTRIBUTING.md)
+and the code of conduct in [`CODE_OF_CONDUCT.md`](https://github.com/desmondsanctity/pinax/blob/main/CODE_OF_CONDUCT.md).
+This page is the short version.
+
+## Prerequisites
+
+- Go 1.25 or newer.
+- `golangci-lint` (for `make lint`).
+- `govulncheck` (for `make vulncheck`).
+
+Optional: Node 22 + pnpm 9 if you want to work on the [website](https://pinax.dev).
+
+## Building
+
+```sh
+git clone https://github.com/desmondsanctity/pinax.git
+cd pinax
+make build
+# binary lands at ./bin/pinax
+```
+
+Put `./bin/pinax` first on your `$PATH` while iterating, or symlink it into
+`/usr/local/bin/` once.
+
+## Test, lint, vet
+
+```sh
+make test            # go test -race ./...
+make lint            # golangci-lint
+make vulncheck       # govulncheck
+make vet             # go vet ./...
+make fmt             # gofmt -s -w .
+```
+
+Network-touching integration tests are tagged and only run when you ask:
+
+```sh
+make test-integration
+```
+
+CI runs the full matrix on every PR.
+
+## PR checklist
+
+Before you open a pull request:
+
+- [ ] `make test`, `make lint`, `make vet` all green.
+- [ ] New behaviour covered by a unit test (table-driven if it makes
+      sense). Network-touching paths get an `_integration_test.go` file.
+- [ ] Public-API changes are reflected in `README.md` _and_ in the matching
+      page under `website/src/content/docs/`.
+- [ ] Conventional Commits in the PR title (`feat:`, `fix:`, `chore:`,
+      `docs:`, `test:`, `refactor:`).
+- [ ] If you changed the catalog, run `pinax catalog list` locally to
+      sanity-check the JSON.
+
+## Reporting bugs
+
+Open an issue with:
+
+1. The exact command you ran.
+2. The full output (paste it as a fenced code block; redact tokens if
+   any).
+3. Your OS / arch and `pinax --version`.
+
+## Security
+
+Don't open a public issue for vulnerabilities. Use [GitHub Security
+Advisories](https://github.com/desmondsanctity/pinax/security/advisories/new) — see [`SECURITY.md`](https://github.com/desmondsanctity/pinax/blob/main/SECURITY.md)
+for the full policy.

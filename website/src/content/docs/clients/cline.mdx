@@ -1,0 +1,55 @@
+---
+title: Cline
+description: Configure Pinax for Cline, the open-source coding agent inside VS Code.
+section: clients
+order: 4
+---
+
+Cline ships with its own MCP config file. Open the Cline panel, click the
+settings cog, and select "Edit MCP settings" — or open the file directly:
+
+```
+<VS Code user dir>/cline_mcp_settings.json
+```
+
+(Exact path depends on your VS Code install; the panel's deep-link is the
+easiest route.)
+
+## 1. Index a docs site
+
+```sh
+pinax add stripe
+```
+
+## 2. Add the server entry
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+    },
+  },
+}
+```
+
+Pin a single docs site with `"args": ["serve", "stripe"]`.
+
+## 3. Reload Cline
+
+Click the refresh icon in the Cline MCP servers list, or reload the VS
+Code window.
+
+## 4. Use it
+
+In a Cline conversation, the new Pinax tools surface under the MCP
+section. Cline tends to be more explicit than Claude/Cursor about which
+tool it's about to call — useful while iterating on a new docs site.
+
+## Troubleshooting
+
+- Cline runs inside the VS Code extension host; if `pinax` isn't on that
+  process's PATH, use the absolute path from `which pinax`.
+- The Cline MCP panel surfaces server stdout/stderr — start there before
+  reaching for `pinax serve --http`.

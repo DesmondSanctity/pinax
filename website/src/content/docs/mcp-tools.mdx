@@ -1,0 +1,128 @@
+---
+title: MCP tools
+description: The five tools Pinax exposes, their argument shapes, and what they return.
+section: reference
+order: 1
+---
+
+A `pinax serve` instance exposes five MCP tools. Every tool except
+`list_docs` accepts an optional `docs` argument to scope the call to a
+single manifest when more than one is loaded. Omit `docs` to fan out
+across every manifest.
+
+## `list_docs`
+
+```jsonc
+{ "name": "list_docs", "arguments": {} }
+```
+
+Returns one entry per loaded manifest:
+
+```jsonc
+[
+  { "name": "stripe", "url": "https://docs.stripe.com", "pages": 412 },
+  { "name": "react", "url": "https://react.dev", "pages": 173 },
+]
+```
+
+Use it first if you don't already know what's mounted.
+
+## `list_sections`
+
+```jsonc
+{
+  "name": "list_sections",
+  "arguments": { "docs": "stripe" },
+}
+```
+
+Returns URL paths grouped by top-level section with page counts:
+
+```jsonc
+[
+  { "section": "/api", "pages": 138 },
+  { "section": "/payments", "pages": 67 },
+  { "section": "/billing", "pages": 41 },
+]
+```
+
+Cheap call — sections are derived from the manifest in memory.
+
+## `search_pages`
+
+```jsonc
+{
+  "name": "search_pages",
+  "arguments": {
+    "query": "payment intent confirm",
+    "limit": 10,
+    "docs": "stripe",
+  },
+}
+```
+
+BM25 ranked over URL paths, titles, and section names, with a substring +
+fuzzy fallback so typos still surface results. Returns:
+
+```jsonc
+[
+  {
+    "url": "https://docs.stripe.com/api/payment_intents/confirm",
+    "title": "Confirm a PaymentIntent",
+    "section": "/api/payment_intents",
+    "score": 0.84,
+  },
+]
+```
+
+Omit `docs` to search every loaded manifest in one shot. Results are
+interleaved by score, not grouped per docs site.
+
+## `get_section_pages`
+
+```jsonc
+{
+  "name": "get_section_pages",
+  "arguments": {
+    "section": "/api/payment_intents",
+    "docs": "stripe",
+  },
+}
+```
+
+Returns every page whose URL starts with that section prefix. Useful when
+the model wants to walk a topic exhaustively.
+
+## `get_page`
+
+```jsonc
+{
+  "name": "get_page",
+  "arguments": {
+    "url": "https://docs.stripe.com/api/payment_intents/confirm",
+  },
+}
+```
+
+Live-fetches the URL with `Accept: text/markdown` first, falls back to
+HTML extraction, and returns clean Markdown. The page cache is consulted
+first — entries older than the TTL trigger a refetch.
+
+`get_page` is the only tool that hits the network at call time. The
+others read from the in-memory manifest.
+
+## Error contract
+
+Every tool returns a structured error rather than throwing:
+
+```jsonc
+{
+  "error": {
+    "code": "not_found",
+    "message": "no manifest named 'striipe' (did you mean 'stripe'?)",
+  },
+}
+```
+
+Codes you'll see: `not_found`, `invalid_args`, `fetch_failed`,
+`cache_error`, `internal`.

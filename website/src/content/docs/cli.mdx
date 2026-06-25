@@ -1,0 +1,118 @@
+---
+title: CLI
+description: Every Pinax command, every flag, with a real example for each.
+section: reference
+order: 0
+---
+
+Run `pinax --help` for an interactive version of this page. Everything
+below is captured from the same help text the binary ships with.
+
+## `pinax add`
+
+Index a new docs site by name (from the catalog) or by URL.
+
+```sh
+pinax add <url|catalog-name> \
+  [--name NAME] \
+  [--exclude PATTERN ...] \
+  [--max-pages N] \
+  [--no-preflight]
+```
+
+| Flag             | Default | Notes                                                                        |
+| ---------------- | ------- | ---------------------------------------------------------------------------- |
+| `--name`         | derived | server name; defaults to the host or catalog key                             |
+| `--exclude`      | none    | repeatable substring filter applied to discovered URLs                       |
+| `--max-pages`    | `1500`  | crawl ceiling; reached pages stop discovery early                            |
+| `--no-preflight` | off     | skip the content density gate (see [Troubleshooting](/docs/troubleshooting)) |
+
+## `pinax list`
+
+```sh
+pinax list
+```
+
+Tabulates every manifest under `~/.pinax/servers/` with page count, base
+URL, and last refresh time.
+
+## `pinax remove`
+
+```sh
+pinax remove <name>
+```
+
+Deletes a manifest plus its BM25 index. Leaves the page cache alone —
+clear that separately with `pinax cache clear`.
+
+## `pinax refresh`
+
+```sh
+pinax refresh <name> [--rebuild-index]
+```
+
+Re-runs discovery against the recorded base URL and writes a fresh
+manifest. `--rebuild-index` forces the BM25 index to be regenerated even
+if the page list hasn't changed (useful after a Pinax upgrade).
+
+## `pinax search`
+
+Out-of-band search, mostly for debugging:
+
+```sh
+pinax search stripe "payment intent"
+```
+
+Hits the same code path as the `search_pages` MCP tool, but prints to
+stdout instead of returning JSON.
+
+## `pinax doctor`
+
+```sh
+pinax doctor [<name>...] [--json]
+```
+
+Reports drift, thin pages, and broken section anchors for one, several,
+or all manifests. Output is human-readable by default; `--json` is meant
+for scripting.
+
+## `pinax serve`
+
+```sh
+pinax serve [<name>] [--http] [--port N] [--host HOST]
+```
+
+Runs the MCP server. See [Serve](/docs/serve) for the full transport
+discussion.
+
+## `pinax cache`
+
+```sh
+pinax cache clear [--older-than DURATION]
+```
+
+Wipes the SQLite page cache. `--older-than 24h` only evicts entries last
+fetched more than 24 hours ago.
+
+## `pinax catalog`
+
+```sh
+pinax catalog list      # show every catalog entry
+pinax catalog refresh   # fetch the latest catalog.json
+```
+
+`refresh` respects `PINAX_CATALOG_URL`. See [Catalog](/docs/catalog).
+
+## `pinax config claude`
+
+Print a ready-to-paste Claude config snippet:
+
+```sh
+pinax config claude [--project] [--split] [--force]
+```
+
+| Flag        | What it does                                                                        |
+| ----------- | ----------------------------------------------------------------------------------- |
+| `--project` | scope the snippet to the current project's `.mcp.json` instead of the global config |
+| `--split`   | write one entry per manifest instead of a single unified server                     |
+| `--force`   | overwrite an existing entry of the same name                                        |

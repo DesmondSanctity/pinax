@@ -1,0 +1,62 @@
+---
+title: Cursor
+description: Hook Pinax into Cursor's MCP support, globally or per-project.
+section: clients
+order: 2
+---
+
+Cursor reads MCP servers from one of two JSON files:
+
+- Global: `~/.cursor/mcp.json`
+- Project: `.cursor/mcp.json` at the repo root
+
+## 1. Index a docs site
+
+```sh
+pinax add stripe
+```
+
+## 2. Add the server entry
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+    },
+  },
+}
+```
+
+A single entry covers every manifest you've added; pin a single docs site
+by adding its name to `args`:
+
+```jsonc
+{
+  "mcpServers": {
+    "stripe-docs": {
+      "command": "pinax",
+      "args": ["serve", "stripe"],
+    },
+  },
+}
+```
+
+## 3. Reload Cursor
+
+Cmd-Shift-P → "Reload Window". Cursor picks up the new servers without a
+full quit.
+
+## 4. Use it
+
+Open the chat sidebar, type `@`, and you should see the Pinax tools
+auto-completed. Or just ask Cursor to "use the pinax search tool to find
+the Stripe API for confirming a PaymentIntent" — it'll pick the right one.
+
+## Tips
+
+- Cursor's per-project config wins over the global one, so a repo can
+  ship a curated docs set for its contributors.
+- If a tool call hangs, `pinax serve --http` in a terminal lets you watch
+  the request live in the log UI at `http://localhost:8423/`.

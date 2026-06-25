@@ -1,0 +1,50 @@
+---
+title: Windsurf
+description: Connect Pinax to Codeium's Windsurf editor.
+section: clients
+order: 3
+---
+
+Windsurf reads MCP servers from:
+
+```
+~/.codeium/windsurf/mcp_config.json
+```
+
+## 1. Index a docs site
+
+```sh
+pinax add stripe
+```
+
+## 2. Add the server entry
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+    },
+  },
+}
+```
+
+The unified entry covers every manifest. Per-docs entries work too — just
+add the catalog name as the second arg.
+
+## 3. Reload Windsurf
+
+Cmd-Shift-P → "Reload Window".
+
+## 4. Use it
+
+Open the Cascade panel. Pinax tools appear under the MCP section once the
+server connects.
+
+## Troubleshooting
+
+- Windsurf's MCP support is still evolving; if the entry doesn't take,
+  double-check `mcp_config.json` is valid JSON (no trailing commas).
+- Run `pinax serve --http` in a terminal alongside Windsurf to watch tool
+  calls in real time.

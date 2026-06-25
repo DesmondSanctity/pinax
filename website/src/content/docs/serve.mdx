@@ -1,0 +1,63 @@
+---
+title: Serve
+description: stdio vs HTTP, the log viewer, port and host options.
+section: guides
+order: 2
+---
+
+`pinax serve` is the only command an MCP client ever actually launches. It
+mounts every manifest under `~/.pinax/servers/` as a single MCP server with
+five tools (`list_docs`, `list_sections`, `search_pages`,
+`get_section_pages`, `get_page`).
+
+## stdio (default)
+
+```sh
+pinax serve
+```
+
+Reads JSON-RPC from stdin and writes to stdout. This is what every MCP
+client launches when you wire up its config file. You almost never run this
+in a terminal yourself — point your client at it instead. See the per-client
+guides under [Clients](/docs/clients/claude-desktop).
+
+To pin a single manifest (useful for client-side resource hygiene):
+
+```sh
+pinax serve stripe
+```
+
+## HTTP + log UI
+
+```sh
+pinax serve --http --port 8423
+```
+
+Three endpoints are mounted:
+
+- `http://localhost:8423/` — dark-themed log viewer (every tool call your
+  agent makes, filterable per docs site).
+- `http://localhost:8423/mcp` — Streamable HTTP MCP endpoint.
+- `http://localhost:8423/sse` — legacy SSE endpoint for older clients.
+
+Use HTTP mode when you want to watch what an agent is actually doing.
+The log UI keeps history per-manifest and refreshes live.
+
+### Bind options
+
+| Flag     | Default     | What it does                               |
+| -------- | ----------- | ------------------------------------------ |
+| `--http` | off         | switches from stdio to HTTP transport      |
+| `--port` | `8423`      | TCP port for the HTTP listener             |
+| `--host` | `127.0.0.1` | bind address — keep on loopback by default |
+
+The MCP endpoints don't authenticate, so binding to anything other than
+`127.0.0.1` makes your indexed docs queryable by anyone on the network.
+
+## Unified mode
+
+In a single `pinax serve` call every tool takes an optional `docs`
+argument that scopes the call to one manifest. Omitting it searches across
+every loaded site at once. Call `list_docs` to discover what's loaded.
+
+See [MCP tools](/docs/mcp-tools) for the full tool contracts.

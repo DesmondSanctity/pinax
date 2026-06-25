@@ -1,0 +1,66 @@
+---
+title: Claude Code
+description: Register Pinax as an MCP server for Anthropic's terminal coding agent.
+section: clients
+order: 1
+---
+
+Claude Code registers MCP servers from the CLI — no config file editing.
+
+## 1. Index a docs site
+
+```sh
+pinax add stripe
+```
+
+## 2. Register the server
+
+```sh
+claude mcp add pinax -- pinax serve
+```
+
+A single registration covers every manifest. To register one per docs
+site:
+
+```sh
+claude mcp add stripe-docs -- pinax serve stripe
+```
+
+`claude mcp add` writes to `~/.claude/.mcp.json` (or the project-local
+`.mcp.json` if you pass `--project`).
+
+## 3. Confirm it's loaded
+
+```sh
+claude mcp list
+```
+
+Should print your new entry with its command and args.
+
+## 4. Use it
+
+Inside a Claude Code session:
+
+> /tools
+
+You'll see `pinax__list_docs`, `pinax__search_pages`, and the rest. Ask
+the agent to call them by name when you want it to consult the docs.
+
+## Per-project setup
+
+If you want a project to ship with a specific Pinax server (so a
+teammate's `claude` CLI auto-registers it):
+
+```sh
+cd my-project
+pinax config claude --project
+```
+
+That writes `.mcp.json` in the current directory. Commit it.
+
+## Troubleshooting
+
+- `claude mcp add` writes the entry as-typed; if `pinax` isn't on Claude
+  Code's PATH, edit `.mcp.json` and replace `pinax` with the absolute
+  path.
+- `claude mcp remove pinax` undoes the registration cleanly.
