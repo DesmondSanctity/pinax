@@ -1,0 +1,68 @@
+---
+title: Configuration
+description: Where Pinax stores manifests, caches, logs, and how to override defaults via environment variables.
+section: guides
+order: 3
+---
+
+Pinax keeps everything under a single directory in `$HOME` and leans on
+environment variables for the few things that need to vary per machine.
+
+## `~/.pinax/` layout
+
+```
+~/.pinax/
+├── catalog.json          # cached catalog (after `pinax catalog refresh`)
+├── cache.db              # SQLite page cache (WAL mode)
+├── logs.db               # SQLite tool-call log used by the HTTP log UI
+└── servers/
+    └── <name>/
+        ├── manifest.json # atomic write: sections, page list, tags
+        └── index.bin     # BM25 index for search_pages
+```
+
+- Manifests are written atomically - a half-completed `pinax add` never
+  corrupts the on-disk state.
+- The page cache is read with TTLs applied at read time, so you can hand-
+  edit `cache.db` if you want to invalidate everything (`pinax cache clear`
+  is the supported route).
+
+## Environment variables
+
+| Variable            | Default                      | What it does                                       |
+| ------------------- | ---------------------------- | -------------------------------------------------- |
+| `PINAX_HOME`        | `$HOME/.pinax`               | root directory for everything Pinax stores         |
+| `PINAX_CATALOG_URL` | GitHub `main`'s catalog.json | where `pinax catalog refresh` fetches from         |
+| `PINAX_USER_AGENT`  | `pinax/<version>`            | overrides the User-Agent on outbound HTTP requests |
+| `PINAX_CACHE_TTL`   | `24h`                        | TTL applied to entries in the page cache           |
+| `PINAX_LOG_LEVEL`   | `info`                       | one of `debug`, `info`, `warn`, `error`            |
+
+All values can also be set per-invocation with the usual shell prefix:
+
+```sh
+PINAX_LOG_LEVEL=debug pinax serve --http
+```
+
+## Cache control
+
+```sh
+pinax cache clear                  # wipes the page cache
+pinax cache clear --older-than 7d  # only entries last fetched > 7d ago
+```
+
+The cache is safe to delete by hand; Pinax will rebuild it on the next
+`get_page` call.
+
+## Tuning a crawl
+
+When `pinax add <url>` is too aggressive or too thin for your docs site:
+
+```sh
+pinax add <url> --max-pages 800            # raise the crawl ceiling
+pinax add <url> --exclude '/blog/' --exclude '/legal/'   # skip prefixes
+pinax add <url> --no-preflight             # bypass the density gate
+```
+
+`--no-preflight` is the escape hatch for sites that fail the content
+density check but you want indexed anyway. The check is documented in
+[Troubleshooting](/docs/troubleshooting).

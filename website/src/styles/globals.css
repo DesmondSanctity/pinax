@@ -122,11 +122,15 @@
   font-size: 0.88rem;
   border: 1px solid var(--color-hairline);
   margin-top: 1.25rem;
+  white-space: pre;
 }
 .prose-pinax pre code {
   background: transparent;
   padding: 0;
   font-size: inherit;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 .prose-pinax strong {
   color: var(--color-fg);
@@ -142,4 +146,37 @@
   border: 0;
   border-top: 1px solid var(--color-hairline);
   margin: 2rem 0;
+}
+.prose-pinax table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-pinax thead {
+  background: var(--color-panel);
+}
+.prose-pinax th,
+.prose-pinax td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--color-hairline);
+  text-align: left;
+  vertical-align: top;
+}
+.prose-pinax th {
+  font-weight: 600;
+  color: var(--color-fg);
+  border-bottom-width: 2px;
+}
+.prose-pinax td {
+  color: var(--color-fg);
+}
+.prose-pinax tbody tr:last-child td {
+  border-bottom: 0;
+}
+.prose-pinax td code,
+.prose-pinax th code {
+  white-space: nowrap;
 }

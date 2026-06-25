@@ -1,0 +1,103 @@
+---
+title: Troubleshooting
+description: Doctor output, JS-rendered sites, thin pages, the content density gate, and the most common errors.
+section: guides
+order: 4
+---
+
+If `pinax add` worked but your agent gets unhelpful answers, the problem
+is usually one of three things: thin pages from a JS-rendered site, a
+manifest that's gone stale, or a search query that's hitting noise. This
+page walks each one.
+
+## Run `pinax doctor`
+
+```sh
+pinax doctor stripe
+```
+
+`doctor` re-scans the manifest and reports drift since the last refresh:
+page-count delta, mean prose length per page, fraction of pages that look
+empty (under 80 words), broken section anchors. Use it whenever queries
+suddenly return junk.
+
+For machine-readable output:
+
+```sh
+pinax doctor stripe --json
+```
+
+For every manifest at once, omit the name.
+
+## JS-rendered docs
+
+Pinax extracts the static HTML the server sends. Pure SPA shells - most
+React-router-only docs sites with no SSR - produce one-line pages that
+say "Loading…" and nothing else. Pinax tries to detect this and either:
+
+1. Switches to `llms.txt` if the site exposes one.
+2. Bails out at the preflight stage with a clear error.
+
+If your target site is JS-rendered but you _know_ the URLs are correct,
+try forcing a refresh with `--rebuild-index` so search uses whatever
+prose Pinax did manage to capture:
+
+```sh
+pinax refresh <name> --rebuild-index
+```
+
+Failing that, the site is genuinely SPA-only and Pinax v1 can't reach it.
+Open an issue with the URL.
+
+## The content-density preflight
+
+`pinax add` runs a one-shot preflight on the candidate URL before crawling:
+it fetches the homepage, strips chrome, and checks the prose ratio. If the
+ratio is too low it refuses to index, with a message naming the threshold.
+
+Bypass it when you know better:
+
+```sh
+pinax add <url> --no-preflight
+```
+
+`pinax doctor` will still flag thin pages after the fact.
+
+## "I added it but `search_pages` returns nothing"
+
+Three things to check, in order:
+
+1. Did `pinax add` actually finish? `pinax list` should show a page count
+   > 0.
+2. Is your query a token-AND substring? `payment intent` will match pages
+   containing both `payment` and `intent`. If neither token appears, the
+   fuzzy fallback kicks in but it's intentionally narrow.
+3. Are you scoping correctly? In a unified server, `search_pages` with no
+   `docs` arg searches across every manifest. Pass `docs: "stripe"` to
+   narrow.
+
+## Errors you might see
+
+| Message                                          | What it means                                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `preflight: density below threshold`             | The homepage looked like an SPA shell. Use `--no-preflight` to force.          |
+| `manifest <name> already exists`                 | Use `pinax refresh <name>` instead, or `pinax remove <name>` and re-add.       |
+| `discovery: no llms.txt, no sitemap, BFS failed` | The site has no machine-readable index and links are JS-only. Often unfixable. |
+| `get_page: 404`                                  | A URL drifted out of the docs site. Re-run `pinax refresh <name>`.             |
+| `cache: WAL checkpoint failed`                   | `~/.pinax/cache.db` is on a filesystem without proper locking. Move it.        |
+
+Most everything else surfaces with a context line; copy the full output
+into a GitHub issue with the URL you ran against.
+
+## Reset
+
+The nuclear option, when you want a clean slate:
+
+```sh
+pinax cache clear
+rm -rf ~/.pinax/servers/<name>
+pinax add <name>
+```
+
+You won't lose anything except indexed manifests - the catalog is
+compiled into the binary.

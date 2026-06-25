@@ -1,0 +1,34 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+type Props = { headings: readonly MarkdownHeading[] };
+const { headings } = Astro.props;
+
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  items.length > 0 && (
+    <nav aria-label="On this page" class="text-sm">
+      <p
+        class="mb-2 text-[11px] font-semibold tracking-[0.14em] uppercase"
+        style="color: var(--color-muted)"
+      >
+        On this page
+      </p>
+      <ul class="space-y-1.5">
+        {items.map((h) => (
+          <li class={h.depth === 3 ? 'pl-3' : ''}>
+            <a
+              href={`#${h.slug}`}
+              class="block truncate transition-colors hover:text-[color:var(--color-primary)]"
+              style="color: var(--color-muted)"
+            >
+              {h.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}

@@ -1,0 +1,19 @@
+---
+type Props = {
+  group: string;
+  title: string;
+};
+const { group, title } = Astro.props;
+---
+
+<nav
+  aria-label="Breadcrumb"
+  class="flex flex-wrap items-center gap-1.5 text-xs"
+  style="color: var(--color-muted)"
+>
+  <a href="/docs/quick-start" class="hover:underline">Docs</a>
+  <span aria-hidden>/</span>
+  <span>{group}</span>
+  <span aria-hidden>/</span>
+  <span style="color: var(--color-fg)">{title}</span>
+</nav>

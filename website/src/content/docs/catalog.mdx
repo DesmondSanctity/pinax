@@ -1,0 +1,77 @@
+---
+title: Catalog
+description: The curated list of docs sites Pinax knows by name, plus how to refresh and override it.
+section: guides
+order: 1
+---
+
+`pinax add <name>` resolves through a small built-in catalog. Today that's
+15 entries - Stripe, React, Next.js, Convex, Anthropic, OpenAI, Supabase,
+Tailwind, FastAPI, Django, Go stdlib, Kubernetes, Vercel, Modal, MCP. The
+full list with tags lives at [/catalog](/catalog).
+
+Anything containing `://`, a `.`, or a `/` is still treated as a URL, so
+your existing scripts keep working:
+
+```sh
+pinax add https://docs.convex.dev
+pinax add stripe                          # same end result
+```
+
+## Listing entries
+
+```sh
+pinax catalog list
+```
+
+Prints the catalog the CLI is currently using - name, base URL, tags, one
+per line. Use it when you forget the exact slug.
+
+## Refreshing
+
+The CLI ships with a built-in copy compiled in. To pull the latest version
+from GitHub:
+
+```sh
+pinax catalog refresh
+```
+
+This fetches `internal/catalog/catalog.json` from `main` and caches it under
+`~/.pinax/catalog.json`. From then on `pinax add <name>` consults the cache
+first, then falls back to the compiled-in copy.
+
+## Custom or forked catalogs
+
+Point `refresh` at a different URL with `PINAX_CATALOG_URL`:
+
+```sh
+PINAX_CATALOG_URL=https://intra.example.com/pinax-catalog.json \
+  pinax catalog refresh
+```
+
+Useful for private docs hubs at work, or for testing a catalog change in a
+fork before opening a PR.
+
+## Shape of a catalog entry
+
+```jsonc
+{
+  "version": "2026.06.25",
+  "entries": {
+    "stripe": {
+      "displayName": "Stripe",
+      "url": "https://docs.stripe.com",
+      "tags": ["payments", "backend"],
+    },
+  },
+}
+```
+
+Optional fields: `llmsTxt` to pin a specific manifest URL, `platform` to
+declare a known doc engine (Mintlify, Docusaurus…), `excludes` to filter
+out path prefixes during crawl.
+
+## Want a docs site added?
+
+[Open a request on GitHub](https://github.com/desmondsanctity/pinax/issues/new?title=Catalog%20request%3A%20%3Cname%3E&labels=catalog).
+We review them per release and ship updates alongside the binary.

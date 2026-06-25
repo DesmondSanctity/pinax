@@ -5,21 +5,98 @@ section: guides
 order: 0
 ---
 
-# Phase-0 stub
+Pinax is a single Go binary. Install it, point it at a docs site, then run
+`pinax serve`. Any MCP-compatible client - Claude Desktop, Claude Code,
+Cursor, Windsurf, Cline - can connect over stdio. No daemon, no cloud, no
+re-indexing pipeline.
 
-The real content for this page lands in **Phase 3** of `docs/SITE_PLAN.md`.
-For now this file exists so docs routing, the sidebar, and the layout shell
-can be exercised end-to-end.
+## 1. Install
 
-## What's here today
+The fastest path on macOS or Linux:
 
-- Astro 5 + Tailwind v4 + MDX + Svelte 5 (island framework, unused so far)
-- Cream `#FAF7F1` palette with ink-blue `#1E3A8A` accent
-- `/catalog` page that imports `internal/catalog/catalog.json` directly so
-  every entry stays in sync with the CLI
+```sh
+brew install desmondsanctity/tap/pinax
+```
 
-## What's next
+If you prefer Go:
 
-- Phase 1: hero, stats trio, how-it-works, install, FAQ
-- Phase 2: catalog filter + per-tag chips (Svelte island)
-- Phase 3: port the rest of the README into this docs collection
+```sh
+go install github.com/desmondsanctity/pinax/cmd/pinax@latest
+```
+
+Or grab a pre-built binary from the [releases page](https://github.com/desmondsanctity/pinax/releases)
+and drop it on your `$PATH`. The full matrix of install options lives in
+[Configuration](/docs/configuration).
+
+## 2. Index a docs site
+
+Pick a name from the [catalog](/catalog):
+
+```sh
+pinax add stripe
+```
+
+Or point at any URL - anything containing `://`, a dot, or a slash is
+treated as a URL:
+
+```sh
+pinax add https://docs.convex.dev
+```
+
+Pinax discovers pages via `llms.txt`, then sitemap, then a bounded BFS
+crawl, and writes an atomic JSON manifest plus a BM25 index under
+`~/.pinax/servers/<name>/`.
+
+## 3. List what's indexed
+
+```sh
+pinax list
+```
+
+You'll see every manifest with its page count, base URL, and last-refresh
+timestamp.
+
+## 4. Serve over stdio
+
+The same command works for every MCP-compatible client:
+
+```sh
+pinax serve
+```
+
+That serves every indexed manifest at once. To pin a single one:
+
+```sh
+pinax serve stripe
+```
+
+Stdio is what MCP clients launch on demand - you usually don't run this in
+a terminal, you point your client config at it. See [Serve](/docs/serve)
+for the HTTP transport + log UI.
+
+## 5. Connect a client
+
+Pick yours: [Claude Desktop](/docs/clients/claude-desktop) ·
+[Claude Code](/docs/clients/claude-code) ·
+[Cursor](/docs/clients/cursor) ·
+[Windsurf](/docs/clients/windsurf) ·
+[Cline](/docs/clients/cline).
+
+Or have Pinax print the snippet for you:
+
+```sh
+pinax config claude --project
+```
+
+## What you get
+
+Four tools, scoped to one manifest or every manifest at once:
+`list_sections`, `search_pages`, `get_section_pages`, `get_page`. Plus
+`list_docs` to enumerate what's loaded. See [MCP tools](/docs/mcp-tools)
+for arg shapes and return contracts.
+
+## Where to next
+
+- [Catalog](/docs/catalog) - what `pinax add <name>` resolves to and how to refresh.
+- [Serve](/docs/serve) - stdio vs HTTP and the log viewer.
+- [Troubleshooting](/docs/troubleshooting) - JS-rendered sites, doctor output, common errors.

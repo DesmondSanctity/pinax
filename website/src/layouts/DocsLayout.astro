@@ -1,23 +1,48 @@
 ---
+import type { MarkdownHeading } from 'astro';
 import BaseLayout from './BaseLayout.astro';
 import Sidebar from '~/components/docs/Sidebar.astro';
+import Toc from '~/components/docs/Toc.astro';
+import Breadcrumb from '~/components/docs/Breadcrumb.astro';
+import EditOnGitHub from '~/components/docs/EditOnGitHub.astro';
+import PrevNext from '~/components/docs/PrevNext.astro';
+import DocsSearch from '~/components/docs/DocsSearch.svelte';
+import { groupForSlug } from '~/data/docsNav';
 
 type Props = {
   title: string;
   description?: string | undefined;
+  slug: string;
+  headings: readonly MarkdownHeading[];
 };
 
-const { title, description } = Astro.props;
+const { title, description, slug, headings } = Astro.props;
+const group = groupForSlug(slug);
 ---
 
 <BaseLayout title={title} description={description}>
-  <div class="container-page grid grid-cols-1 gap-10 py-10 lg:grid-cols-[14rem_minmax(0,1fr)]">
-    <aside class="lg:sticky lg:top-20 lg:self-start">
+  <div
+    class="container-page grid grid-cols-1 gap-10 py-10 lg:grid-cols-[14rem_minmax(0,1fr)_12rem]"
+  >
+    <aside class="lg:sticky lg:top-20 lg:self-start" data-pagefind-ignore>
+      <div class="mb-6">
+        <DocsSearch client:load />
+      </div>
       <Sidebar />
     </aside>
-    <article class="prose-pinax max-w-none">
-      <header class="mb-8 border-b pb-6" style="border-color: var(--color-hairline)">
-        <h1 class="text-4xl font-medium tracking-tight" style="color: var(--color-fg)">
+    <article class="prose-pinax max-w-none" data-pagefind-body>
+      <div data-pagefind-ignore class="mb-3">
+        <Breadcrumb group={group} title={title} />
+      </div>
+      <header
+        class="mb-8 border-b pb-6"
+        style="border-color: var(--color-hairline)"
+        data-pagefind-meta={`title:${title}`}
+      >
+        <h1
+          class="text-4xl font-medium tracking-tight"
+          style="color: var(--color-fg); font-family: var(--font-serif)"
+        >
           {title}
         </h1>
         {
@@ -29,6 +54,13 @@ const { title, description } = Astro.props;
         }
       </header>
       <slot />
+      <div data-pagefind-ignore class="mt-10">
+        <EditOnGitHub slug={slug} />
+        <PrevNext slug={slug} />
+      </div>
     </article>
+    <aside class="hidden lg:sticky lg:top-20 lg:block lg:self-start" data-pagefind-ignore>
+      <Toc headings={headings} />
+    </aside>
   </div>
 </BaseLayout>

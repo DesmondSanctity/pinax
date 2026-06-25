@@ -1,46 +1,12 @@
 ---
-type Group = {
-  label: string;
-  items: readonly { label: string; href: string }[];
-};
-
-const groups: readonly Group[] = [
-  {
-    label: 'Guides',
-    items: [
-      { label: 'Quick start', href: '/docs/quick-start' },
-      { label: 'Catalog', href: '/docs/catalog' },
-      { label: 'Serve', href: '/docs/serve' },
-      { label: 'Configuration', href: '/docs/configuration' },
-      { label: 'Troubleshooting', href: '/docs/troubleshooting' },
-    ],
-  },
-  {
-    label: 'Reference',
-    items: [
-      { label: 'CLI', href: '/docs/cli' },
-      { label: 'MCP tools', href: '/docs/mcp-tools' },
-      { label: 'Architecture', href: '/docs/architecture' },
-    ],
-  },
-  {
-    label: 'Clients',
-    items: [
-      { label: 'Claude Desktop', href: '/docs/clients/claude-desktop' },
-      { label: 'Claude Code', href: '/docs/clients/claude-code' },
-      { label: 'Cursor', href: '/docs/clients/cursor' },
-      { label: 'Windsurf', href: '/docs/clients/windsurf' },
-      { label: 'Cline', href: '/docs/clients/cline' },
-    ],
-  },
-];
+import { docsGroups } from '~/data/docsNav';
 
 const path = Astro.url.pathname;
 ---
 
 <nav aria-label="Docs navigation" class="text-sm">
   {
-    groups.map((group) => (
+    docsGroups.map((group) => (
       <div class="mb-6">
         <p
           class="mb-2 text-[11px] font-semibold tracking-[0.14em] uppercase"
@@ -50,11 +16,12 @@ const path = Astro.url.pathname;
         </p>
         <ul class="space-y-1.5">
           {group.items.map((item) => {
-            const active = path === item.href;
+            const href = `/docs/${item.slug}`;
+            const active = path === href;
             return (
               <li>
                 <a
-                  href={item.href}
+                  href={href}
                   class="block rounded px-2 py-1 transition-colors hover:bg-[color:var(--color-panel)]"
                   style={`color: ${active ? 'var(--color-primary)' : 'var(--color-fg)'}; font-weight: ${active ? '600' : '400'}`}
                 >
