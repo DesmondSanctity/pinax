@@ -1,0 +1,52 @@
+---
+import { clients } from '~/data/clients';
+import ClientLogo from '~/components/icons/ClientLogo.astro';
+---
+
+<section class="container-page py-24 sm:py-32">
+  <header class="mb-12 max-w-2xl">
+    <p
+      class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
+      style="color: var(--color-primary)"
+    >
+      MCP clients
+    </p>
+    <h2 class="font-serif text-4xl tracking-tight sm:text-5xl" style="color: var(--color-fg)">
+      Wire it into the agent you already use.
+    </h2>
+    <p class="mt-4 text-base" style="color: var(--color-muted)">
+      Each client gets a copy-pasteable JSON snippet and a config-path reminder.
+    </p>
+  </header>
+
+  <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {
+      clients.map((c) => (
+        <li>
+          <a
+            href={c.docsHref}
+            class="group hairline block rounded-lg border p-5 transition-colors hover:border-[color:var(--color-primary)]"
+            style="background: var(--color-bg)"
+          >
+            <div class="flex items-center gap-3">
+              <ClientLogo id={c.id} size={32} />
+              <p class="font-serif text-lg" style="color: var(--color-fg)">
+                {c.label}
+              </p>
+            </div>
+            <p
+              class="mt-3 truncate font-mono text-xs"
+              title={c.configPath}
+              style="color: var(--color-muted)"
+            >
+              {c.configPath}
+            </p>
+            <p class="mt-4 text-xs font-medium" style="color: var(--color-primary)">
+              Setup guide →
+            </p>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>

@@ -1,0 +1,39 @@
+---
+import { howItWorks } from '~/data/landing';
+import CommandCard from '~/components/primitives/CommandCard.astro';
+---
+
+<section class="container-page py-24 sm:py-32">
+  <header class="mb-12 max-w-2xl">
+    <p
+      class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
+      style="color: var(--color-primary)"
+    >
+      How it works
+    </p>
+    <h2 class="font-serif text-4xl tracking-tight sm:text-5xl" style="color: var(--color-fg)">
+      Three commands. Zero servers to manage.
+    </h2>
+  </header>
+
+  <ol class="grid grid-cols-1 gap-6 md:grid-cols-3">
+    {
+      howItWorks.map((step) => (
+        <li class="hairline rounded-lg border p-6" style="background: var(--color-bg)">
+          <p class="font-mono text-xs" style="color: var(--color-muted)">
+            {step.index}
+          </p>
+          <p class="mt-2 font-serif text-2xl" style="color: var(--color-fg)">
+            {step.verb}
+          </p>
+          <div class="mt-4">
+            <CommandCard command={step.command} size="sm" />
+          </div>
+          <p class="mt-4 text-sm leading-relaxed" style="color: var(--color-muted)">
+            {step.body}
+          </p>
+        </li>
+      ))
+    }
+  </ol>
+</section>

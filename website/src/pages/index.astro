@@ -1,40 +1,20 @@
 ---
 import MarketingLayout from '~/layouts/MarketingLayout.astro';
-import { site } from '~/lib/site';
-import { catalog } from '~/data/catalog';
+import Hero from '~/components/marketing/Hero.astro';
+import StatsTrio from '~/components/marketing/StatsTrio.astro';
+import HowItWorks from '~/components/marketing/HowItWorks.astro';
+import InstallBlock from '~/components/marketing/InstallBlock.astro';
+import ClientMatrix from '~/components/marketing/ClientMatrix.astro';
+import Faq from '~/components/marketing/Faq.astro';
+import FinalCta from '~/components/marketing/FinalCta.astro';
 ---
 
 <MarketingLayout>
-  <section class="container-page py-24">
-    <p
-      class="mb-4 text-[11px] font-semibold tracking-[0.18em] uppercase"
-      style="color: var(--color-muted)"
-    >
-      Local MCP server for docs
-    </p>
-    <h1 class="font-serif text-5xl tracking-tight sm:text-6xl" style="color: var(--color-fg)">
-      Any docs site.<br />A local MCP server.<br />Under a minute.
-    </h1>
-    <p class="mt-6 max-w-2xl text-lg" style="color: var(--color-muted)">
-      {site.description}
-    </p>
-    <div class="mt-8 flex flex-wrap items-center gap-3">
-      <code
-        class="hairline rounded-md border px-4 py-2 text-sm"
-        style="background: var(--color-panel)"
-      >
-        brew install {site.brewTap}
-      </code>
-      <a
-        href="/docs/quick-start"
-        class="rounded-md px-4 py-2 text-sm font-medium"
-        style="background: var(--color-primary); color: var(--color-bg)"
-      >
-        Read the docs →
-      </a>
-    </div>
-    <p class="mt-12 text-xs tracking-[0.14em] uppercase" style="color: var(--color-muted)">
-      Phase-0 scaffold · landing copy coming in Phase 1 · {catalog.length} catalog entries indexed
-    </p>
-  </section>
+  <Hero />
+  <StatsTrio />
+  <HowItWorks />
+  <InstallBlock />
+  <ClientMatrix />
+  <Faq />
+  <FinalCta />
 </MarketingLayout>

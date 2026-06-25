@@ -1,0 +1,31 @@
+---
+import { finalCta } from '~/data/landing';
+import CommandCard from '~/components/primitives/CommandCard.astro';
+---
+
+<section class="container-page py-28 sm:py-36">
+  <div class="mx-auto max-w-3xl text-center">
+    <p
+      class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
+      style="color: var(--color-primary)"
+    >
+      {finalCta.kicker}
+    </p>
+    <h2
+      class="font-serif text-4xl tracking-tight sm:text-5xl md:text-6xl"
+      style="color: var(--color-fg)"
+    >
+      {finalCta.headline}
+    </h2>
+    <div class="mx-auto mt-10 max-w-lg">
+      <CommandCard command={finalCta.command} />
+    </div>
+    <a
+      href={finalCta.href}
+      class="mt-6 inline-block text-sm font-medium underline-offset-4 hover:underline"
+      style="color: var(--color-primary)"
+    >
+      {finalCta.hrefLabel}
+    </a>
+  </div>
+</section>

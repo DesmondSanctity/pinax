@@ -61,3 +61,85 @@
 @utility hairline {
   border-color: var(--color-hairline);
 }
+
+/* Docs prose — hand-rolled to avoid pulling in @tailwindcss/typography. */
+.prose-pinax {
+  color: var(--color-fg);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.prose-pinax > * + * {
+  margin-top: 1.1rem;
+}
+.prose-pinax h2 {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  letter-spacing: -0.01em;
+  margin-top: 2.75rem;
+  margin-bottom: 0.25rem;
+}
+.prose-pinax h3 {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  letter-spacing: -0.005em;
+  margin-top: 2rem;
+  margin-bottom: 0.1rem;
+}
+.prose-pinax p {
+  color: var(--color-fg);
+}
+.prose-pinax ul,
+.prose-pinax ol {
+  padding-left: 1.4rem;
+  margin-top: 0.75rem;
+}
+.prose-pinax ul {
+  list-style: disc;
+}
+.prose-pinax ol {
+  list-style: decimal;
+}
+.prose-pinax li + li {
+  margin-top: 0.35rem;
+}
+.prose-pinax a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.prose-pinax code {
+  background: var(--color-panel);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+.prose-pinax pre {
+  background: var(--color-panel);
+  padding: 1rem 1.1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.88rem;
+  border: 1px solid var(--color-hairline);
+  margin-top: 1.25rem;
+}
+.prose-pinax pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+.prose-pinax strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+.prose-pinax blockquote {
+  border-left: 3px solid var(--color-hairline);
+  padding-left: 1rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+.prose-pinax hr {
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  margin: 2rem 0;
+}

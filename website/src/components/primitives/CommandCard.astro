@@ -1,0 +1,23 @@
+---
+import CopyButton from './CopyButton.svelte';
+
+type Props = {
+  command: string;
+  prompt?: string;
+  size?: 'sm' | 'md';
+};
+
+const { command, prompt = '$', size = 'md' } = Astro.props;
+const sizing = size === 'sm' ? 'min-h-10 pl-3 pr-1.5 text-xs' : 'min-h-12 pl-4 pr-2 text-sm';
+---
+
+<div
+  class={`flex items-center justify-between gap-3 rounded-md border hairline ${sizing}`}
+  style="background: var(--color-panel)"
+>
+  <code class="truncate font-mono" style="color: var(--color-fg)">
+    <span style="color: var(--color-muted)">{prompt}</span>
+    <span class="ml-2">{command}</span>
+  </code>
+  <CopyButton client:load text={command} />
+</div>

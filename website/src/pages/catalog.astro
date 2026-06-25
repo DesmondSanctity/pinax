@@ -1,5 +1,6 @@
 ---
 import MarketingLayout from '~/layouts/MarketingLayout.astro';
+import CommandCard from '~/components/primitives/CommandCard.astro';
 import { catalog, allTags, catalogVersion } from '~/data/catalog';
 ---
 
@@ -24,7 +25,10 @@ import { catalog, allTags, catalogVersion } from '~/data/catalog';
     <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {
         catalog.map((entry) => (
-          <li class="hairline rounded-lg border p-5" style="background: var(--color-panel)">
+          <li
+            class="hairline flex flex-col rounded-lg border p-5"
+            style="background: var(--color-panel)"
+          >
             <p class="font-serif text-lg" style="color: var(--color-fg)">
               {entry.displayName}
             </p>
@@ -41,12 +45,9 @@ import { catalog, allTags, catalogVersion } from '~/data/catalog';
                 </span>
               ))}
             </div>
-            <code
-              class="hairline mt-4 block rounded-md border px-3 py-2 text-xs"
-              style="background: var(--color-bg); color: var(--color-fg)"
-            >
-              pinax add {entry.key}
-            </code>
+            <div class="mt-auto pt-4">
+              <CommandCard command={`pinax add ${entry.key}`} size="sm" />
+            </div>
           </li>
         ))
       }

@@ -1,0 +1,44 @@
+---
+import { faq } from '~/data/faq';
+---
+
+<section class="hairline border-t" style="background: var(--color-panel)">
+  <div class="container-page py-24 sm:py-32">
+    <header class="mb-12 max-w-2xl">
+      <p
+        class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
+        style="color: var(--color-primary)"
+      >
+        FAQ
+      </p>
+      <h2 class="font-serif text-4xl tracking-tight sm:text-5xl" style="color: var(--color-fg)">
+        Honest answers, in advance.
+      </h2>
+    </header>
+
+    <div class="hairline mx-auto max-w-3xl divide-y">
+      {
+        faq.map((item) => (
+          <details class="group py-5">
+            <summary
+              class="flex cursor-pointer list-none items-center justify-between gap-4 text-left"
+              style="color: var(--color-fg)"
+            >
+              <span class="font-serif text-lg">{item.q}</span>
+              <span
+                class="font-mono text-xl transition-transform group-open:rotate-45"
+                aria-hidden
+                style="color: var(--color-muted)"
+              >
+                +
+              </span>
+            </summary>
+            <p class="mt-3 text-base leading-relaxed" style="color: var(--color-muted)">
+              {item.a}
+            </p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
