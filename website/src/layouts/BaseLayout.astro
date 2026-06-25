@@ -1,7 +1,7 @@
 ---
 import '~/styles/globals.css';
 import { site } from '~/lib/site';
-import { buildSeo } from '~/lib/seo';
+import { buildSeo, softwareApplicationJsonLd } from '~/lib/seo';
 import TopNav from '~/components/nav/TopNav.astro';
 import Footer from '~/components/nav/Footer.astro';
 
@@ -22,6 +22,8 @@ const {
 } = Astro.props;
 
 const seo = buildSeo({ title, description, path });
+const isHome = Astro.url.pathname === '/';
+const jsonLd = isHome ? JSON.stringify(softwareApplicationJsonLd()) : null;
 ---
 
 <!doctype html>
@@ -44,6 +46,7 @@ const seo = buildSeo({ title, description, path });
 
     <link rel="preconnect" href="https://rsms.me/" />
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    {jsonLd && <script type="application/ld+json" set:html={jsonLd} />}
   </head>
   <body class="flex min-h-screen flex-col antialiased">
     {showNav && <TopNav />}

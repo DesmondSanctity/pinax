@@ -1,27 +1,64 @@
 ---
 import MarketingLayout from '~/layouts/MarketingLayout.astro';
+
+const links = [
+  { href: '/docs/quick-start', title: 'Quick start', blurb: 'Install Pinax and index your first docs site in 60 seconds.' },
+  { href: '/catalog', title: 'Catalog', blurb: 'Browse the 15 curated docs sites you can add with one command.' },
+  { href: '/docs/mcp-tools', title: 'MCP tools', blurb: 'The four tools Pinax exposes to your MCP client.' },
+  { href: '/docs/troubleshooting', title: 'Troubleshooting', blurb: 'Doctor output, common errors, JS-rendered sites.' },
+];
 ---
 
 <MarketingLayout title="Not found" description="That page doesn't exist.">
-  <section
-    class="container-page flex min-h-[50vh] flex-col items-center justify-center py-24 text-center"
-  >
-    <p
-      class="mb-4 text-[11px] font-semibold tracking-[0.18em] uppercase"
-      style="color: var(--color-muted)"
-    >
-      404
+  <section class="container-page py-24">
+    <div class="mx-auto max-w-2xl text-center">
+      <p
+        class="mb-4 font-mono text-[11px] tracking-[0.22em] uppercase"
+        style="color: var(--color-muted)"
+      >
+        404 · Not found
+      </p>
+      <h1 class="font-serif text-5xl tracking-tight sm:text-6xl" style="color: var(--color-fg)">
+        Nothing here.
+      </h1>
+      <p class="mt-5 text-lg" style="color: var(--color-muted)">
+        The page you're looking for has moved, doesn't exist, or never did. Try one of these
+        instead.
+      </p>
+    </div>
+
+    <ul class="mx-auto mt-14 grid max-w-3xl gap-3 sm:grid-cols-2">
+      {
+        links.map((l) => (
+          <li>
+            <a
+              href={l.href}
+              class="hairline group block rounded-lg border p-5 transition-colors hover:border-[color:var(--color-primary)]"
+            >
+              <p class="flex items-center gap-2 font-serif text-lg" style="color: var(--color-fg)">
+                {l.title}
+                <span
+                  class="font-mono text-sm transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </p>
+              <p class="mt-1 text-sm" style="color: var(--color-muted)">{l.blurb}</p>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="mt-12 text-center">
+      <a
+        href="/"
+        class="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+        style="background: var(--color-primary); color: var(--color-bg)"
+      >
+        Back home
+      </a>
     </p>
-    <h1 class="font-serif text-5xl tracking-tight" style="color: var(--color-fg)">Nothing here.</h1>
-    <p class="mt-4 max-w-md" style="color: var(--color-muted)">
-      The page you're looking for has moved, doesn't exist, or never did.
-    </p>
-    <a
-      href="/"
-      class="mt-8 rounded-md px-4 py-2 text-sm font-medium"
-      style="background: var(--color-primary); color: var(--color-bg)"
-    >
-      Back home
-    </a>
   </section>
 </MarketingLayout>
