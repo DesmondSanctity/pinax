@@ -47,9 +47,14 @@
       }
       .stage {
         display: flex;
-        align-items: center;
-        gap: 32px;
+        flex-direction: column;
+        gap: 12px;
         padding-top: 12px;
+      }
+      .wordrow {
+        display: flex;
+        align-items: center;
+        gap: 28px;
       }
       .mark {
         flex: 0 0 auto;
@@ -109,6 +114,12 @@
         color: var(--muted);
         text-transform: uppercase;
       }
+      .footline .url {
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 16px;
+        color: var(--fg);
+      }
     </style>
   </head>
   <body>
@@ -116,32 +127,32 @@
       <div class="kicker">Local MCP server for docs</div>
 
       <div class="stage">
-        <svg
-          class="mark"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          width="180"
-          height="180"
-          aria-hidden="true"
-        >
-          <rect width="32" height="32" rx="6" fill="#FAF7F1" />
-          <rect x="6" y="6" width="20" height="20" rx="3" fill="#1E3A8A" />
-          <path d="M11 11h6a3 3 0 1 1 0 6h-2v4h-4z" fill="#FAF7F1" />
-          <circle cx="17" cy="14" r="1" fill="#1E3A8A" />
-        </svg>
-        <div>
+        <div class="wordrow">
+          <svg
+            class="mark"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 32 32"
+            width="140"
+            height="140"
+            aria-hidden="true"
+          >
+            <rect width="32" height="32" rx="6" fill="#FAF7F1" />
+            <rect x="6" y="6" width="20" height="20" rx="3" fill="#1E3A8A" />
+            <path d="M11 11h6a3 3 0 1 1 0 6h-2v4h-4z" fill="#FAF7F1" />
+            <circle cx="17" cy="14" r="1" fill="#1E3A8A" />
+          </svg>
           <h1 class="wordmark">Pinax</h1>
-          <p class="tagline">
-            Any docs site. A local MCP server.<br />
-            <span class="muted">Under a minute.</span>
-          </p>
         </div>
+        <p class="tagline">
+          Any docs site. A local MCP server.<br />
+          <span class="muted">Under a minute.</span>
+        </p>
       </div>
 
       <div class="cmd"><span class="prompt">$</span> pinax add stripe</div>
 
       <div class="footline">
-        <span>pinax.pages.dev</span>
+        <span class="url">https://pinax.dev</span>
         <span>Open source &nbsp;·&nbsp; MIT</span>
       </div>
     </div>
