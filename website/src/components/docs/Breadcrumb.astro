@@ -6,12 +6,14 @@ type Props = {
 const { group, title } = Astro.props;
 ---
 
-<nav aria-label="Breadcrumb" class="text-xs" style="color: var(--color-muted)">
-  <ol class="flex flex-wrap items-center gap-1.5" style="list-style: none; padding-left: 0;">
-    <li><a href="/docs/quick-start" class="hover:underline">Docs</a></li>
-    <li aria-hidden>/</li>
-    <li>{group}</li>
-    <li aria-hidden>/</li>
-    <li style="color: var(--color-fg)">{title}</li>
-  </ol>
+<nav
+  aria-label="Breadcrumb"
+  class="flex flex-wrap items-center gap-1.5 text-xs"
+  style="color: var(--color-muted)"
+>
+  <a href="/docs/quick-start" class="hover:underline">Docs</a>
+  <span aria-hidden>/</span>
+  <span>{group}</span>
+  <span aria-hidden>/</span>
+  <span style="color: var(--color-fg)">{title}</span>
 </nav>
