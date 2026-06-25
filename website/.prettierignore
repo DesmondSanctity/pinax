@@ -1,4 +1,11 @@
 node_modules/
 dist/
 .astro/
+.pagefind/
+public/pagefind/
 pnpm-lock.yaml
+
+# Astro/Svelte are formatted by their own VS Code extensions, not Prettier.
+# prettier-plugin-astro throws "Unhandled node type 'frontmatter'!" in our setup.
+*.astro
+*.svelte

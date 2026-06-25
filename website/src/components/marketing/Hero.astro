@@ -2,6 +2,7 @@
 import { site } from '~/lib/site';
 import CommandCard from '~/components/primitives/CommandCard.astro';
 import { clients } from '~/data/clients';
+import ClientLogo from '~/components/icons/ClientLogo.astro';
 ---
 
 <section class="container-page pt-20 pb-24 sm:pt-28 sm:pb-32">
@@ -34,17 +35,28 @@ import { clients } from '~/data/clients';
     </a>
   </div>
 
-  <div
-    class="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs"
-    style="color: var(--color-muted)"
-  >
-    <span class="tracking-[0.14em] uppercase">Works with</span>
-    {
-      clients.map((c) => (
-        <a href={c.docsHref} class="hover:opacity-80" style="color: var(--color-fg)">
-          {c.label}
-        </a>
-      ))
-    }
+  <div class="mt-12 flex flex-wrap items-center gap-x-5 gap-y-3">
+    <span
+      class="text-[11px] tracking-[0.18em] uppercase"
+      style="color: var(--color-muted)"
+    >
+      Works with
+    </span>
+    <ul class="flex flex-wrap items-center gap-2.5">
+      {
+        clients.map((c) => (
+          <li>
+            <a
+              href={c.docsHref}
+              class="block rounded-md transition-opacity hover:opacity-80"
+              aria-label={c.label}
+              title={c.label}
+            >
+              <ClientLogo id={c.id} size={32} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
   </div>
 </section>

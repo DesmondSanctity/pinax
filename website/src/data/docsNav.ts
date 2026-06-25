@@ -22,6 +22,7 @@ export const docsGroups: readonly DocsGroup[] = [
       { label: 'Cursor', slug: 'clients/cursor' },
       { label: 'Windsurf', slug: 'clients/windsurf' },
       { label: 'Cline', slug: 'clients/cline' },
+      { label: 'GitHub Copilot', slug: 'clients/copilot' },
     ],
   },
   {

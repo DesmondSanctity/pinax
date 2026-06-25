@@ -1,0 +1,80 @@
+---
+title: GitHub Copilot
+description: Add Pinax as an MCP server in VS Code's Copilot Chat.
+section: clients
+order: 5
+---
+
+import Figure from '~/components/docs/Figure.astro';
+
+VS Code's Copilot Chat reads MCP servers from a workspace-scoped JSON
+file:
+
+```
+.vscode/mcp.json
+```
+
+User-level entries live in your `settings.json` under
+`"chat.mcp.servers"`, but the workspace file is the recommended path -
+it travels with the repo and your teammates pick it up automatically.
+
+## 1. Index a docs site
+
+```sh
+pinax add stripe
+```
+
+## 2. Add the server entry
+
+Create `.vscode/mcp.json` at the repo root:
+
+```jsonc
+{
+  "servers": {
+    "pinax": {
+      "type": "stdio",
+      "command": "pinax",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+A single entry covers every manifest you've added. Pin one docs site by
+swapping in `"args": ["serve", "stripe"]`.
+
+<Figure
+  alt="VS Code editor with .vscode/mcp.json open showing the pinax server entry"
+  caption="Workspace MCP config at .vscode/mcp.json"
+/>
+
+## 3. Start the server from Copilot Chat
+
+Open the Command Palette (Cmd/Ctrl-Shift-P) and run **MCP: List
+Servers**. Pick `pinax`, then **Start Server**. Copilot will spawn
+`pinax serve` and surface its tools in the next chat turn.
+
+<Figure
+  alt="Command Palette showing MCP: List Servers with pinax in the results"
+  caption="MCP: List Servers in the Command Palette"
+/>
+
+## 4. Use it
+
+Open Copilot Chat (Cmd/Ctrl-I) and ask:
+
+> Use the pinax tools to find the Stripe API for confirming a
+> PaymentIntent and quote its required parameters.
+
+Copilot will call `list_docs` → `search_pages` → `get_page` and answer
+from the live page.
+
+## Troubleshooting
+
+- If Copilot doesn't list the server, confirm the `mcp.json` is valid
+  JSON (no trailing commas, no JSONC comments unless your VS Code build
+  supports them).
+- The Output panel has an **MCP** channel that shows server stdout and
+  startup errors - check there first when a tool call fails.
+- If `pinax` isn't on the PATH VS Code inherits, replace `"command":
+  "pinax"` with the absolute path from `which pinax`.

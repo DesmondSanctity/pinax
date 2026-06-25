@@ -2,8 +2,56 @@
 import { faq } from '~/data/faq';
 ---
 
-<section class="hairline border-t" style="background: var(--color-panel)">
-  <div class="container-page py-24 sm:py-32">
+<section class="hairline relative overflow-hidden border-t" style="background: var(--color-panel)">
+  <div class="container-page relative py-24 sm:py-32">
+    <!-- Desktop-only editorial mark in the empty left gutter. A vertical
+         hairline anchors three oversized outlined serif glyphs spelling
+         FAQ, with a small mono caption at the foot. Hidden below lg. -->
+    <aside
+      aria-hidden="true"
+      class="pointer-events-none absolute top-24 bottom-24 left-2 hidden w-[120px] select-none lg:flex xl:left-6"
+    >
+      <div
+        class="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2"
+        style="background: var(--color-hairline)"
+      ></div>
+      <div class="relative flex h-full w-full flex-col items-center justify-center gap-1">
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >F</span>
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >A</span>
+        <span
+          class="faq-mark font-serif"
+          style="
+            font-size: clamp(64px, 8vw, 96px);
+            line-height: 0.9;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--color-muted);
+          "
+        >Q</span>
+        <span
+          class="mt-6 font-mono text-[10px] tracking-[0.22em] uppercase"
+          style="color: var(--color-muted); opacity: 0.7"
+        >
+          {faq.length}&nbsp;questions
+        </span>
+      </div>
+    </aside>
+
     <header class="mb-12 max-w-2xl">
       <p
         class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
@@ -42,3 +90,9 @@ import { faq } from '~/data/faq';
     </div>
   </div>
 </section>
+
+<style>
+  .faq-mark {
+    opacity: 0.55;
+  }
+</style>

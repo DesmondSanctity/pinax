@@ -5,6 +5,8 @@ section: clients
 order: 1
 ---
 
+import Figure from '~/components/docs/Figure.astro';
+
 Claude Code registers MCP servers from the CLI - no config file editing.
 
 ## 1. Index a docs site
@@ -36,6 +38,11 @@ claude mcp list
 ```
 
 Should print your new entry with its command and args.
+
+<Figure
+  alt="Terminal running claude mcp add followed by claude mcp list showing the pinax entry"
+  caption="Registering and verifying the server from the terminal"
+/>
 
 ## 4. Use it
 
