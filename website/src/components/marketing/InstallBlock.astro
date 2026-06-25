@@ -1,0 +1,44 @@
+---
+import { installOptions } from '~/data/landing';
+import CommandCard from '~/components/primitives/CommandCard.astro';
+---
+
+<section class="hairline border-t" style="background: var(--color-panel)">
+  <div class="container-page py-24 sm:py-32">
+    <header class="mb-12 max-w-2xl">
+      <p
+        class="mb-3 text-[11px] font-semibold tracking-[0.18em] uppercase"
+        style="color: var(--color-primary)"
+      >
+        Install
+      </p>
+      <h2 class="font-serif text-4xl tracking-tight sm:text-5xl" style="color: var(--color-fg)">
+        Pick one. Run it.
+      </h2>
+    </header>
+
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+      {
+        installOptions.map((opt, i) => (
+          <article
+            class="hairline flex flex-col rounded-lg border p-6"
+            style="background: var(--color-bg)"
+          >
+            <p class="font-mono text-xs" style="color: var(--color-muted)">
+              {String(i + 1).padStart(2, '0')}
+            </p>
+            <p class="mt-2 font-serif text-xl" style="color: var(--color-fg)">
+              {opt.label}
+            </p>
+            <div class="mt-4">
+              <CommandCard command={opt.command} size="sm" />
+            </div>
+            <p class="mt-4 text-xs leading-relaxed" style="color: var(--color-muted)">
+              {opt.hint}
+            </p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

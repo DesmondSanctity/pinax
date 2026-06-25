@@ -1,0 +1,28 @@
+---
+import { stats } from '~/data/landing';
+---
+
+<section class="hairline border-y" style="background: var(--color-panel)">
+  <div
+    class="container-page hairline grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+  >
+    {
+      stats.map((s) => (
+        <div class="py-10 sm:px-8">
+          <p
+            class="font-serif text-5xl tracking-tight tabular-nums sm:text-6xl"
+            style="color: var(--color-fg)"
+          >
+            {s.value}
+          </p>
+          <p class="mt-2 text-sm" style="color: var(--color-fg)">
+            {s.label}
+          </p>
+          <p class="mt-1 text-xs" style="color: var(--color-muted)">
+            {s.sub}
+          </p>
+        </div>
+      ))
+    }
+  </div>
+</section>
