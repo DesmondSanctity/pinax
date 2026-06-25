@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "printWidth": 100,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": true,
+  "proseWrap": "preserve",
+  "embeddedLanguageFormatting": "off",
+  "overrides": [
+    { "files": ["*.md", "*.mdx"], "options": { "singleQuote": false } },
+    { "files": ["*.json", "*.jsonc"], "options": { "singleQuote": false, "trailingComma": "none" } }
+  ]
+}
