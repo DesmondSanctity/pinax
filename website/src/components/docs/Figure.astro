@@ -1,0 +1,42 @@
+---
+interface Props {
+  src?: string;
+  alt: string;
+  caption: string;
+}
+const { src, alt, caption } = Astro.props;
+const placeholder = !src;
+---
+
+<figure class="my-6">
+  {placeholder ? (
+    <div
+      class="flex items-center justify-center rounded-lg border border-dashed px-6 py-12 text-center"
+      style="border-color: var(--color-hairline); background: var(--color-panel); color: var(--color-muted); min-height: 14rem;"
+      role="img"
+      aria-label={alt}
+    >
+      <div>
+        <div class="mb-1 font-mono text-[0.7rem] uppercase tracking-[0.15em]">
+          Screenshot placeholder
+        </div>
+        <div class="text-sm" style="color: var(--color-fg)">{alt}</div>
+      </div>
+    </div>
+  ) : (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      class="block w-full rounded-lg border"
+      style="border-color: var(--color-hairline)"
+    />
+  )}
+  <figcaption
+    class="mt-2 text-center text-xs"
+    style="color: var(--color-muted)"
+  >
+    {caption}
+  </figcaption>
+</figure>

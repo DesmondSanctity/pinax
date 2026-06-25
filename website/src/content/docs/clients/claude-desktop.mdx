@@ -5,6 +5,8 @@ section: clients
 order: 0
 ---
 
+import Figure from '~/components/docs/Figure.astro';
+
 Claude Desktop reads MCP servers from a JSON config file. On macOS:
 
 ```
@@ -12,6 +14,11 @@ Claude Desktop reads MCP servers from a JSON config file. On macOS:
 ```
 
 On Windows: `%APPDATA%\Claude\claude_desktop_config.json`.
+
+<Figure
+  alt="claude_desktop_config.json open in an editor with the mcpServers block visible"
+  caption="Claude Desktop config file location"
+/>
 
 ## 1. Index a docs site
 
