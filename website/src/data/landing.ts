@@ -42,6 +42,9 @@ export type InstallOption = {
   label: string;
   command: string;
   hint: string;
+  icon: string;
+  bg: string;
+  fg: string;
 };
 
 export const installOptions: readonly InstallOption[] = [
@@ -49,16 +52,25 @@ export const installOptions: readonly InstallOption[] = [
     label: 'Homebrew',
     command: 'brew install desmondsanctity/tap/pinax',
     hint: 'Recommended on macOS · auto-updates with brew upgrade.',
+    icon: 'simple-icons:homebrew',
+    bg: '#1B1A17',
+    fg: '#FBB040',
   },
   {
     label: 'Go install',
     command: 'go install github.com/desmondsanctity/pinax/cmd/pinax@latest',
     hint: 'Requires Go 1.22+. Binary lands in $GOBIN.',
+    icon: 'simple-icons:go',
+    bg: '#E6F4F9',
+    fg: '#00ADD8',
   },
   {
     label: 'Prebuilt binary',
     command: 'curl -L https://github.com/desmondsanctity/pinax/releases/latest -o pinax',
     hint: 'Linux/macOS/Windows builds on the releases page.',
+    icon: 'lucide:package',
+    bg: '#F2EEE5',
+    fg: '#1E3A8A',
   },
 ];
 
