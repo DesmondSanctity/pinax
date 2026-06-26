@@ -12,6 +12,8 @@
 
 > Turn any documentation site into a local MCP server in under a minute.
 
+**Live site:** [pinax.pages.dev](https://pinax.pages.dev)
+
 <p align="center">
   <img src="assets/demo.gif" alt="Pinax demo — banner, list indexed docs, serve MCP over HTTP" width="800">
 </p>
