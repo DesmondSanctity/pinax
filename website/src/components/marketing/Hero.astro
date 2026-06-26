@@ -7,8 +7,10 @@ import HeroRain from '~/components/marketing/HeroRain.astro';
 ---
 
 <section class="container-page pt-20 pb-24 sm:pt-28 sm:pb-32">
-  <div class="grid items-center gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)] xl:gap-16">
-    <div>
+  <div
+    class="grid grid-cols-1 items-center gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)] xl:gap-16"
+  >
+    <div class="min-w-0">
       <p
         class="mb-5 text-[11px] font-semibold tracking-[0.2em] uppercase"
         style="color: var(--color-primary)"
@@ -61,7 +63,7 @@ import HeroRain from '~/components/marketing/HeroRain.astro';
       </div>
     </div>
 
-    <div class="hidden xl:block">
+    <div class="hidden min-w-0 xl:block">
       <HeroRain />
     </div>
   </div>
