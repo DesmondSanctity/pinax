@@ -1,7 +1,30 @@
 ---
+import { Icon } from 'astro-icon/components';
 import { nav, site } from '~/lib/site';
 
 const path = Astro.url.pathname;
+
+async function getStars(): Promise<number | null> {
+  try {
+    const repoPath = site.repo.replace(/^https:\/\/github\.com\//, '');
+    const res = await fetch(`https://api.github.com/repos/${repoPath}`, {
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { stargazers_count?: number };
+    return typeof data.stargazers_count === 'number' ? data.stargazers_count : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatStars(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(n);
+}
+
+const stars = await getStars();
 ---
 
 <header
@@ -20,15 +43,44 @@ const path = Astro.url.pathname;
     <nav class="flex items-center gap-6 text-sm">
       {
         nav.top.map((item) => {
-          const active = !('external' in item && item.external) && path.startsWith(item.href);
+          const isExternal = 'external' in item && item.external;
+          const isGithub = isExternal && item.href === site.repo;
+          const active = !isExternal && path.startsWith(item.href);
+          const linkProps = isExternal ? { target: '_blank', rel: 'noopener' } : {};
+          if (isGithub) {
+            return (
+              <a
+                href={item.href}
+                class="inline-flex items-center gap-2 transition-opacity hover:opacity-70"
+                style="color: var(--color-fg)"
+                aria-label={
+                  stars && stars > 0
+                    ? `GitHub — ${stars} star${stars === 1 ? '' : 's'}`
+                    : 'GitHub'
+                }
+                {...linkProps}
+              >
+                <Icon name="simple-icons:github" class="h-[18px] w-[18px]" />
+                {stars && stars > 0 ? (
+                  <span
+                    class="inline-flex items-center gap-1 text-[13px] tabular-nums"
+                    style="color: var(--color-muted)"
+                  >
+                    <Icon name="lucide:star" class="h-[13px] w-[13px]" />
+                    {formatStars(stars)}
+                  </span>
+                ) : (
+                  <span>{item.label}</span>
+                )}
+              </a>
+            );
+          }
           return (
             <a
               href={item.href}
               class="transition-opacity hover:opacity-70"
               style={`color: ${active ? 'var(--color-primary)' : 'var(--color-fg)'}`}
-              {...('external' in item && item.external
-                ? { target: '_blank', rel: 'noopener' }
-                : {})}
+              {...linkProps}
             >
               {item.label}
             </a>

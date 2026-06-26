@@ -1,8 +1,7 @@
 export const site = {
   name: 'Pinax',
   tagline: 'Any docs site. A local MCP server. Under a minute.',
-  // pinax.dev not yet registered; pinax.pages.dev is the Cloudflare Pages fallback.
-  url: 'https://pinax.pages.dev',
+  url: 'https://pinax.dev',
   repo: 'https://github.com/desmondsanctity/pinax',
   releases: 'https://github.com/desmondsanctity/pinax/releases',
   brewTap: 'desmondsanctity/tap/pinax',

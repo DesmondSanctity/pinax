@@ -7,8 +7,7 @@ import icon from 'astro-icon';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  // pinax.dev not yet registered; pinax.pages.dev is the Cloudflare Pages fallback.
-  site: 'https://pinax.pages.dev',
+  site: 'https://pinax.dev',
   trailingSlash: 'never',
   integrations: [mdx(), sitemap(), svelte(), icon()],
   vite: {
