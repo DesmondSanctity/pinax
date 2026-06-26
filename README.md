@@ -125,12 +125,12 @@ server name with whatever you used in `pinax add`.
 
 ```jsonc
 {
- "mcpServers": {
-  "convex-docs": {
-   "command": "pinax",
-   "args": ["serve", "convex-docs"],
+  "mcpServers": {
+    "convex-docs": {
+      "command": "pinax",
+      "args": ["serve", "convex-docs"],
+    },
   },
- },
 }
 ```
 
@@ -152,12 +152,12 @@ claude mcp add convex-docs -- pinax serve convex-docs
 
 ```jsonc
 {
- "mcpServers": {
-  "convex-docs": {
-   "command": "pinax",
-   "args": ["serve", "convex-docs"],
+  "mcpServers": {
+    "convex-docs": {
+      "command": "pinax",
+      "args": ["serve", "convex-docs"],
+    },
   },
- },
 }
 ```
 
@@ -168,12 +168,12 @@ claude mcp add convex-docs -- pinax serve convex-docs
 
 ```jsonc
 {
- "mcpServers": {
-  "convex-docs": {
-   "command": "pinax",
-   "args": ["serve", "convex-docs"],
+  "mcpServers": {
+    "convex-docs": {
+      "command": "pinax",
+      "args": ["serve", "convex-docs"],
+    },
   },
- },
 }
 ```
 
@@ -184,12 +184,12 @@ claude mcp add convex-docs -- pinax serve convex-docs
 
 ```jsonc
 {
- "mcpServers": {
-  "convex-docs": {
-   "command": "pinax",
-   "args": ["serve", "convex-docs"],
+  "mcpServers": {
+    "convex-docs": {
+      "command": "pinax",
+      "args": ["serve", "convex-docs"],
+    },
   },
- },
 }
 ```
 
@@ -215,13 +215,13 @@ pinax config claude [--project] [--split] [--force]
 Every tool accepts an optional `docs` argument that scopes the call to a
 single manifest when the unified server is hosting more than one.
 
-| Tool                | Description                                                            | Args                                              |
-| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
-| `list_docs`         | Names, base URLs and page counts of every loaded manifest              | none                                              |
-| `list_sections`     | URL paths grouped by top-level section, with page counts               | `docs?: string`                                   |
+| Tool                | Description                                                                                  | Args                                               |
+| ------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `list_docs`         | Names, base URLs and page counts of every loaded manifest                                    | none                                               |
+| `list_sections`     | URL paths grouped by top-level section, with page counts                                     | `docs?: string`                                    |
 | `search_pages`      | BM25 ranked search over URL paths, titles and section names, with substring + fuzzy fallback | `query: string`, `limit?: number`, `docs?: string` |
-| `get_section_pages` | All pages under a section prefix                                       | `section: string`, `docs?: string`                |
-| `get_page`          | Live-fetch a page; returns clean extracted Markdown                    | `url: string`                                     |
+| `get_section_pages` | All pages under a section prefix                                                             | `section: string`, `docs?: string`                 |
+| `get_page`          | Live-fetch a page; returns clean extracted Markdown                                          | `url: string`                                      |
 
 ## Project layout
 

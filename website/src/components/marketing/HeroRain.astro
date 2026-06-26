@@ -1,0 +1,141 @@
+---
+const glyphs = '{}[]():;|=+-*/`~!?#@$%^&.,_'.split('');
+
+const signals = [
+  '# Quick start',
+  'brew install pinax',
+  'pinax add stripe',
+  'pinax serve',
+  '4 MCP tools ready',
+  'search_pages("rate limit")',
+  '↳ stripe/api/rate-limiting',
+  '↳ convex/server/scheduler',
+  'list_sections',
+  'get_page("/docs/cli")',
+  'Content-Type: text/markdown',
+  '# Catalog',
+  'pinax add convex',
+  'GET /api/index → 200',
+  '# llms.txt · sitemap · BFS',
+  'pinax catalog refresh',
+];
+
+function rng(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s;
+  };
+}
+
+function escText(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const rand = rng(20260626);
+const width = 48;
+const rows = 80;
+const parts: string[] = [];
+let sigIdx = 0;
+
+for (let i = 0; i < rows; i++) {
+  if (i > 0 && (i % 5 === 0 || i % 7 === 0) && sigIdx < signals.length * 3) {
+    parts.push(`<span class="sig">${escText(signals[sigIdx % signals.length]!)}</span>`);
+    sigIdx++;
+  } else {
+    let row = '';
+    for (let j = 0; j < width; j++) {
+      const r = rand();
+      const g = glyphs[r % glyphs.length]!;
+      const lit = r % 100 < 10;
+      row += lit ? `<i>${escText(g)}</i>` : escText(g);
+    }
+    parts.push(`<span class="noise">${row}</span>`);
+  }
+}
+
+const block = parts.join('\n');
+const stream = `${block}\n${block}`;
+---
+
+<div class="hero-rain" aria-hidden="true">
+  <pre class="hero-rain__stream"><Fragment set:html={stream} /></pre>
+</div>
+
+<style>
+  .hero-rain {
+    position: relative;
+    width: 100%;
+    height: 540px;
+    display: flex;
+    justify-content: flex-end;
+    overflow: hidden;
+    mask-image: linear-gradient(
+      180deg,
+      transparent 0%,
+      black 14%,
+      black 86%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      transparent 0%,
+      black 14%,
+      black 86%,
+      transparent 100%
+    );
+  }
+
+  .hero-rain__stream {
+    margin: 0;
+    align-self: flex-start;
+    font-family:
+      'JetBrains Mono',
+      'Geist Mono',
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      Consolas,
+      monospace;
+    font-size: 12.5px;
+    line-height: 1.85;
+    letter-spacing: 0.04em;
+    white-space: pre;
+    will-change: transform;
+    animation: rain-scroll 70s linear infinite;
+  }
+
+  .hero-rain__stream :global(.noise) {
+    color: var(--color-muted);
+    opacity: 0.28;
+  }
+  .hero-rain__stream :global(.noise i) {
+    color: var(--color-primary);
+    opacity: 0.55;
+    font-style: normal;
+  }
+  .hero-rain__stream :global(.sig) {
+    color: var(--color-primary);
+    opacity: 0.92;
+    font-weight: 500;
+  }
+
+  @keyframes rain-scroll {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-rain__stream {
+      animation: none;
+      transform: translateY(-12%);
+    }
+  }
+</style>
