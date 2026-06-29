@@ -3,7 +3,6 @@ package crawler
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -61,14 +60,6 @@ func llmsTxtCandidates(baseURL string) ([]string, error) {
 	root.Fragment = ""
 	out = append(out, root.String())
 	return out, nil
-}
-
-func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Page, error) {
-	pages, status := fetchAndParseLLMSTxtReport(ctx, llmsTxtURL, baseURL)
-	if len(pages) == 0 {
-		return nil, errors.New(status)
-	}
-	return pages, nil
 }
 
 // fetchAndParseLLMSTxtReport returns the parsed pages and a short status
