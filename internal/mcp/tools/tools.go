@@ -484,7 +484,12 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	// If any manifest knows this URL and recorded a per-page content URL
+	// (sibling Markdown endpoint from docs-ai.json or llms.txt), fetch that
+	// instead. URL stays the canonical key for cache + session.
+	fetchURL := d.contentURLFor(url)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -509,7 +514,7 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
 	var out string
 	switch {
-	case strings.Contains(contentType, "text/markdown"), strings.HasSuffix(strings.ToLower(url), ".md"):
+	case strings.Contains(contentType, "text/markdown"), strings.HasSuffix(strings.ToLower(fetchURL), ".md"):
 		out = extractor.FromMarkdown(url, string(body))
 	default:
 		out, err = extractor.FromHTML(url, string(body))
@@ -523,6 +528,21 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 		_ = d.Cache.Set(url, out)
 	}
 	return out, nil
+}
+
+// contentURLFor returns the per-page Markdown content URL recorded in any
+// loaded manifest for canonicalURL, or canonicalURL itself when none is set.
+func (d *Deps) contentURLFor(canonicalURL string) string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	for _, m := range d.manifests {
+		for _, p := range m.Pages {
+			if p.URL == canonicalURL && p.ContentURL != "" {
+				return p.ContentURL
+			}
+		}
+	}
+	return canonicalURL
 }
 
 func (d *Deps) storeSession(url, content string) {

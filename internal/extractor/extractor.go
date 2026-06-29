@@ -22,6 +22,14 @@ func FromMarkdown(url, markdown string) string {
 // <main>/<article>, and emits headings, paragraphs, lists, code blocks, and
 // tables in a stable order.
 func FromHTML(url, htmlBody string) (string, error) {
+	// Fast path: many docs platforms (Spectaql v2, Mintlify) embed the
+	// canonical page Markdown inside a "Copy as Markdown" button as
+	// data-markdown="...". If present and substantial, prefer it over
+	// our best-effort HTML extraction — the site already did the work.
+	if md := inlineMarkdown(htmlBody); md != "" {
+		return FromMarkdown(url, md), nil
+	}
+
 	doc, err := html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
 		return "", err
@@ -39,6 +47,29 @@ func FromHTML(url, htmlBody string) (string, error) {
 	fmt.Fprintf(&b, "# %s\nSource: %s\n", title, url)
 	walk(&b, main, 0)
 	return collapseBlankLines(b.String()), nil
+}
+
+// inlineMarkdownMinChars is the minimum length a data-markdown attribute
+// must hold before we trust it over HTML extraction. Tuned to skip noise
+// like empty placeholder buttons while accepting real page content.
+const inlineMarkdownMinChars = 200
+
+var dataMarkdownRe = regexp.MustCompile(`(?is)data-(?:page-)?markdown\s*=\s*"([^"]+)"`)
+
+// inlineMarkdown returns the page Markdown embedded in a data-markdown
+// (or data-page-markdown) attribute, HTML-unescaped, or "" when none is
+// present or the candidate is too small to be the real page content.
+func inlineMarkdown(htmlBody string) string {
+	m := dataMarkdownRe.FindStringSubmatch(htmlBody)
+	if len(m) < 2 {
+		return ""
+	}
+	md := html.UnescapeString(m[1])
+	md = strings.TrimSpace(md)
+	if len(md) < inlineMarkdownMinChars {
+		return ""
+	}
+	return md
 }
 
 var noiseTags = map[string]struct{}{

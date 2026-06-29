@@ -14,17 +14,29 @@ import (
 // Returns (nil, nil) when no usable llms.txt is found — callers should fall
 // through to the next discovery strategy.
 func ProbeLLMSTxt(ctx context.Context, baseURL string) ([]Page, error) {
+	pages, _, err := ProbeLLMSTxtReport(ctx, baseURL)
+	return pages, err
+}
+
+// ProbeLLMSTxtReport is like ProbeLLMSTxt but also returns one DiscoveryProbe
+// per candidate URL attempted (in order), for the doctor matrix.
+func ProbeLLMSTxtReport(ctx context.Context, baseURL string) ([]Page, []DiscoveryProbe, error) {
 	candidates, err := llmsTxtCandidates(baseURL)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	var probes []DiscoveryProbe
 	for _, c := range candidates {
-		pages, err := fetchAndParseLLMSTxt(ctx, c, baseURL)
-		if err == nil && len(pages) > 0 {
-			return pages, nil
+		pages, status := fetchAndParseLLMSTxtReport(ctx, c, baseURL)
+		p := DiscoveryProbe{Strategy: "llmstxt", URL: c, Status: status, Pages: len(pages)}
+		if len(pages) > 0 {
+			p.Used = true
+			probes = append(probes, p)
+			return pages, probes, nil
 		}
+		probes = append(probes, p)
 	}
-	return nil, nil
+	return nil, probes, nil
 }
 
 func llmsTxtCandidates(baseURL string) ([]string, error) {
@@ -52,29 +64,39 @@ func llmsTxtCandidates(baseURL string) ([]string, error) {
 }
 
 func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Page, error) {
+	pages, status := fetchAndParseLLMSTxtReport(ctx, llmsTxtURL, baseURL)
+	if len(pages) == 0 {
+		return nil, errors.New(status)
+	}
+	return pages, nil
+}
+
+// fetchAndParseLLMSTxtReport returns the parsed pages and a short status
+// string suitable for a doctor matrix ("200", "404", "no-links", err msg).
+func fetchAndParseLLMSTxtReport(ctx context.Context, llmsTxtURL, baseURL string) ([]Page, string) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, llmsTxtURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, err.Error()
 	}
 	req.Header.Set("User-Agent", userAgent())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, err.Error()
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("llms.txt: HTTP %d at %s", resp.StatusCode, llmsTxtURL)
+		return nil, fmt.Sprintf("HTTP %d", resp.StatusCode)
 	}
 
 	originURL, err := siteOrigin(baseURL)
 	if err != nil {
-		return nil, err
+		return nil, err.Error()
 	}
 	llmsTxtBase, err := url.Parse(llmsTxtURL)
 	if err != nil {
-		return nil, err
+		return nil, err.Error()
 	}
 
 	var pages []Page
@@ -125,12 +147,12 @@ func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Pa
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, err.Error()
 	}
 	if len(pages) == 0 {
-		return nil, errors.New("llms.txt: no usable links found")
+		return nil, "no-links"
 	}
-	return pages, nil
+	return pages, "ok"
 }
 
 // parseMarkdownLink parses a single Markdown inline link, "[Title](URL)".

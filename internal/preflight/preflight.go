@@ -118,7 +118,7 @@ func Check(ctx context.Context, pages []crawler.Page, opts Options) *Report {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i] = probe(ctx, p.URL, opts)
+			results[i] = probe(ctx, p, opts)
 		}()
 	}
 	wg.Wait()
@@ -196,9 +196,15 @@ func stridedSample(pages []crawler.Page, n int) []crawler.Page {
 	return out
 }
 
-func probe(ctx context.Context, url string, opts Options) PageResult {
-	r := PageResult{URL: url}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func probe(ctx context.Context, p crawler.Page, opts Options) PageResult {
+	r := PageResult{URL: p.URL}
+	// Prefer the per-page content URL (sibling .md from docs-ai.json /
+	// llms.txt) over the canonical page URL when one is available.
+	fetchURL := p.URL
+	if p.ContentURL != "" {
+		fetchURL = p.ContentURL
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fetchURL, nil)
 	if err != nil {
 		r.Err = err.Error()
 		return r
@@ -228,10 +234,10 @@ func probe(ctx context.Context, url string, opts Options) PageResult {
 	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
 	var prose string
 	switch {
-	case strings.Contains(contentType, "text/markdown"), strings.HasSuffix(strings.ToLower(url), ".md"):
-		prose = extractor.FromMarkdown(url, string(body))
+	case strings.Contains(contentType, "text/markdown"), strings.HasSuffix(strings.ToLower(fetchURL), ".md"):
+		prose = extractor.FromMarkdown(p.URL, string(body))
 	default:
-		prose, err = extractor.FromHTML(url, string(body))
+		prose, err = extractor.FromHTML(p.URL, string(body))
 		if err != nil {
 			r.Err = err.Error()
 			return r

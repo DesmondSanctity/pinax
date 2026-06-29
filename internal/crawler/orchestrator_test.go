@@ -134,3 +134,52 @@ func TestCrawl_FillsTitleFromURLWhenMissing(t *testing.T) {
 		t.Errorf("expected page %s not in result", u)
 	}
 }
+
+// Discovery probes should be recorded in order and the chosen strategy
+// marked Used, so `pinax doctor` can render an honest matrix.
+func TestCrawl_RecordsDiscoveryMatrix(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/docs-ai.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"docs":[
+                {"url":"%[1]s/docs/intro","markdownUrl":"%[1]s/md/intro","title":"Intro"},
+                {"url":"%[1]s/docs/quick","markdownUrl":"%[1]s/md/quick","title":"Quick"}
+            ]}`, srv.URL)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	res, err := crawler.Crawl(context.Background(), srv.URL+"/docs", crawler.DefaultOptions())
+	if err != nil {
+		t.Fatalf("Crawl: %v", err)
+	}
+	if res.Source != "docs-ai-json" {
+		t.Errorf("expected source=docs-ai-json, got %q", res.Source)
+	}
+	if res.Pages[0].ContentURL == "" {
+		t.Errorf("expected ContentURL populated from markdownUrl, got empty")
+	}
+	if len(res.Discovery) == 0 {
+		t.Fatal("expected discovery probes to be recorded, got none")
+	}
+	// First strategy is always llmstxt (must be attempted before docs-ai-json).
+	if res.Discovery[0].Strategy != "llmstxt" {
+		t.Errorf("first probe = %q, want llmstxt", res.Discovery[0].Strategy)
+	}
+	var usedFound bool
+	for _, p := range res.Discovery {
+		if p.Used {
+			usedFound = true
+			if p.Strategy != "docs-ai-json" {
+				t.Errorf("Used probe = %q, want docs-ai-json", p.Strategy)
+			}
+		}
+	}
+	if !usedFound {
+		t.Error("no probe marked Used")
+	}
+}

@@ -8,21 +8,36 @@ import (
 )
 
 // Crawl is the top-level entrypoint. It selects a discovery strategy in priority
-// order: llms.txt probe → sitemap → BFS. JS-rendered platforms can still be
-// crawled if they expose llms.txt or a sitemap; only when BFS would be required
-// do we surface an UnsupportedPlatformError.
+// order: llms.txt probe → docs-ai.json probe → sitemap → BFS. JS-rendered
+// platforms can still be crawled if they expose llms.txt, docs-ai.json or a
+// sitemap; only when BFS would be required do we surface an
+// UnsupportedPlatformError. The full probe matrix is recorded on
+// CrawlResult.Discovery for `pinax doctor` to render.
 func Crawl(ctx context.Context, baseURL string, opts Options) (*CrawlResult, error) {
 	start := time.Now()
 
 	detection := DetectPlatform(baseURL)
+	var discovery []DiscoveryProbe
 
-	if pages, _ := ProbeLLMSTxt(ctx, baseURL); len(pages) > 0 {
-		return buildResult(pages, baseURL, string(detection.Platform), "llmstxt", start), nil
+	if pages, probes, _ := ProbeLLMSTxtReport(ctx, baseURL); len(pages) > 0 {
+		discovery = append(discovery, probes...)
+		return buildResult(pages, baseURL, string(detection.Platform), "llmstxt", start, discovery), nil
+	} else {
+		discovery = append(discovery, probes...)
+	}
+
+	if pages, probes, _ := ProbeDocsAIJSONReport(ctx, baseURL); len(pages) > 0 {
+		discovery = append(discovery, probes...)
+		return buildResult(pages, baseURL, string(detection.Platform), "docs-ai-json", start, discovery), nil
+	} else {
+		discovery = append(discovery, probes...)
 	}
 
 	if pages, _ := TryParseSitemap(ctx, baseURL); len(pages) > 0 {
-		return buildResult(pages, baseURL, string(detection.Platform), "sitemap", start), nil
+		discovery = append(discovery, DiscoveryProbe{Strategy: "sitemap", Status: "ok", Pages: len(pages), Used: true})
+		return buildResult(pages, baseURL, string(detection.Platform), "sitemap", start, discovery), nil
 	}
+	discovery = append(discovery, DiscoveryProbe{Strategy: "sitemap", Status: "no-pages"})
 
 	if !detection.Supported {
 		return nil, &UnsupportedPlatformError{Platform: string(detection.Platform)}
@@ -32,10 +47,11 @@ func Crawl(ctx context.Context, baseURL string, opts Options) (*CrawlResult, err
 	if err != nil {
 		return nil, err
 	}
-	return buildResult(pages, baseURL, string(detection.Platform), "bfs", start), nil
+	discovery = append(discovery, DiscoveryProbe{Strategy: "bfs", Status: "ok", Pages: len(pages), Used: true})
+	return buildResult(pages, baseURL, string(detection.Platform), "bfs", start, discovery), nil
 }
 
-func buildResult(pages []Page, baseURL, platform, source string, start time.Time) *CrawlResult {
+func buildResult(pages []Page, baseURL, platform, source string, start time.Time, discovery []DiscoveryProbe) *CrawlResult {
 	for i := range pages {
 		if pages[i].Title == "" {
 			pages[i].Title = titleFromURL(pages[i].URL)
@@ -52,6 +68,7 @@ func buildResult(pages []Page, baseURL, platform, source string, start time.Time
 			Succeeded: len(pages),
 			Duration:  time.Since(start),
 		},
+		Discovery: discovery,
 	}
 }
 

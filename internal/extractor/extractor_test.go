@@ -109,3 +109,43 @@ func TestFromHTML_SourceLine(t *testing.T) {
 		t.Errorf("missing source line: %s", out)
 	}
 }
+
+func TestFromHTML_PrefersInlineDataMarkdown(t *testing.T) {
+	// Spectaql v2 / Buffer / Mintlify embed clean Markdown in a
+	// "Copy as Markdown" button as data-markdown="...". When present,
+	// trust it over our best-effort HTML extraction.
+	md := strings.Repeat("# Title\n\nThis is the real page body.\n\n", 10)
+	html := `<html><body>
+        <header><nav>noise nav</nav></header>
+        <main>
+          <button class="copy-md" data-markdown="` + md + `">copy</button>
+          <p>filler shell content</p>
+        </main>
+      </body></html>`
+	out, err := extractor.FromHTML("https://e.com/p", html)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "This is the real page body.") {
+		t.Errorf("expected inline markdown body, got: %s", out)
+	}
+	if strings.Contains(out, "filler shell content") {
+		t.Errorf("inline-markdown rescue should bypass HTML walk, got: %s", out)
+	}
+	if !strings.Contains(out, "Source: https://e.com/p") {
+		t.Errorf("missing source line: %s", out)
+	}
+}
+
+func TestFromHTML_IgnoresTinyDataMarkdown(t *testing.T) {
+	// An empty or near-empty data-markdown placeholder must NOT short-circuit
+	// the regular HTML extraction.
+	html := `<html><body><main>
+          <button data-markdown="x">copy</button>
+          <p>This is the actual page content for a substantial paragraph used as a sanity check that the regular walk still runs.</p>
+        </main></body></html>`
+	out, _ := extractor.FromHTML("u", html)
+	if !strings.Contains(out, "This is the actual page content") {
+		t.Errorf("expected HTML walk to run, got: %s", out)
+	}
+}

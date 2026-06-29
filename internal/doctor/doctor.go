@@ -22,17 +22,18 @@ const PageDriftRefuseRatio = 0.5
 // Report is the structured result of a doctor run. Stable JSON shape — the
 // bug-report issue template renders the same fields.
 type Report struct {
-	Name          string            `json:"name"`
-	BaseURL       string            `json:"baseUrl"`
-	ManifestAge   time.Duration     `json:"manifestAgeNs"`
-	StoredPages   int               `json:"storedPages"`
-	StoredSource  string            `json:"storedSource"`
-	CurrentPages  int               `json:"currentPages"`
-	CurrentSource string            `json:"currentSource"`
-	Preflight     *preflight.Report `json:"preflight"`
-	Healthy       bool              `json:"healthy"`
-	Reasons       []string          `json:"reasons"`
-	PinaxVersion  string            `json:"pinaxVersion,omitempty"`
+	Name          string                    `json:"name"`
+	BaseURL       string                    `json:"baseUrl"`
+	ManifestAge   time.Duration             `json:"manifestAgeNs"`
+	StoredPages   int                       `json:"storedPages"`
+	StoredSource  string                    `json:"storedSource"`
+	CurrentPages  int                       `json:"currentPages"`
+	CurrentSource string                    `json:"currentSource"`
+	Discovery     []crawler.DiscoveryProbe  `json:"discovery,omitempty"`
+	Preflight     *preflight.Report         `json:"preflight"`
+	Healthy       bool                      `json:"healthy"`
+	Reasons       []string                  `json:"reasons"`
+	PinaxVersion  string                    `json:"pinaxVersion,omitempty"`
 }
 
 // Diagnose re-crawls the site behind m and compares the result against
@@ -57,6 +58,7 @@ func Diagnose(ctx context.Context, m *manifest.Manifest, pinaxVersion string) (*
 	}
 	rep.CurrentPages = len(res.Pages)
 	rep.CurrentSource = res.Source
+	rep.Discovery = res.Discovery
 	rep.Preflight = preflight.Check(ctx, res.Pages, preflight.Options{})
 
 	if rep.StoredPages > 0 {
@@ -92,6 +94,23 @@ func (r *Report) FormatText(w io.Writer) {
 	if r.Preflight != nil {
 		fmt.Fprintf(w, "  mean prose:      %d chars\n", r.Preflight.MeanProseLen)
 		fmt.Fprintf(w, "  mean text/html:  %.3f\n", r.Preflight.MeanRatio)
+	}
+	if len(r.Discovery) > 0 {
+		fmt.Fprintln(w, "  discovery:")
+		for _, p := range r.Discovery {
+			marker := " "
+			if p.Used {
+				marker = "*"
+			}
+			line := fmt.Sprintf("    %s %-13s %s", marker, p.Strategy, p.Status)
+			if p.Pages > 0 {
+				line += fmt.Sprintf(" (%d pages)", p.Pages)
+			}
+			if p.URL != "" {
+				line += "  " + p.URL
+			}
+			fmt.Fprintln(w, line)
+		}
 	}
 	if r.Healthy {
 		fmt.Fprintln(w, "  status:          OK")

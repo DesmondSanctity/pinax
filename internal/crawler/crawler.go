@@ -17,6 +17,11 @@ type Page struct {
 	URL     string `json:"url"`
 	Title   string `json:"title,omitempty"`
 	Section string `json:"section,omitempty"`
+	// ContentURL, when non-empty, is the URL the runtime should fetch to
+	// get the readable content of this page (typically a sibling Markdown
+	// endpoint exposed by docs-ai.json or llms.txt). URL stays the
+	// canonical, user-facing URL.
+	ContentURL string `json:"contentUrl,omitempty"`
 }
 
 // CrawlResult is the output of Crawl.
@@ -24,9 +29,22 @@ type CrawlResult struct {
 	Pages     []Page     `json:"pages"`
 	BaseURL   string     `json:"baseUrl"`
 	Platform  string     `json:"platform"`
-	Source    string     `json:"source"` // "llmstxt" | "sitemap" | "bfs"
+	Source    string     `json:"source"` // "llmstxt" | "docs-ai-json" | "sitemap" | "bfs"
 	CrawledAt time.Time  `json:"crawledAt"`
 	Stats     CrawlStats `json:"stats"`
+	// Discovery records every probe Crawl attempted, in order, so doctor
+	// can render a matrix explaining why a given source was chosen.
+	Discovery []DiscoveryProbe `json:"discovery,omitempty"`
+}
+
+// DiscoveryProbe is one row in the discovery matrix: which strategy tried
+// which URL and what came back.
+type DiscoveryProbe struct {
+	Strategy string `json:"strategy"` // "llmstxt" | "docs-ai-json" | "sitemap" | "bfs"
+	URL      string `json:"url,omitempty"`
+	Status   string `json:"status"` // "200" | "404" | "no-links" | "ok" | "skipped" | err msg
+	Pages    int    `json:"pages,omitempty"`
+	Used     bool   `json:"used,omitempty"`
 }
 
 // CrawlStats summarises the crawl run.
