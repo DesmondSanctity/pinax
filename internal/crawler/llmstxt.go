@@ -72,6 +72,10 @@ func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Pa
 	if err != nil {
 		return nil, err
 	}
+	llmsTxtBase, err := url.Parse(llmsTxtURL)
+	if err != nil {
+		return nil, err
+	}
 
 	var pages []Page
 	seen := make(map[string]bool)
@@ -95,6 +99,14 @@ func fetchAndParseLLMSTxt(ctx context.Context, llmsTxtURL, baseURL string) ([]Pa
 		if linkURL == "" {
 			continue
 		}
+		// Resolve relative hrefs ("/guides/intro.md", "intro.md") against
+		// the llms.txt URL so the origin-prefix filter below sees an
+		// absolute URL. The llmstxt.org spec allows either form.
+		resolved, err := llmsTxtBase.Parse(linkURL)
+		if err != nil || resolved.Scheme == "" || resolved.Host == "" {
+			continue
+		}
+		linkURL = resolved.String()
 		if !strings.HasPrefix(linkURL, originURL) {
 			continue
 		}

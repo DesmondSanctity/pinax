@@ -166,3 +166,43 @@ func TestProbeLLMSTxt_ParsesBulletListFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestProbeLLMSTxt_ResolvesRelativeLinks(t *testing.T) {
+	// Regression for developers.buffer.com / Spectaql-style llms.txt where
+	// entries are root-relative paths ("- [Title](/guides/x.md)") not
+	// absolute URLs. The origin-prefix filter must see resolved URLs.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/llms.txt" {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprint(w,
+				"# Example API\n"+
+					"\n"+
+					"## Guides\n"+
+					"\n"+
+					"- [Introduction](/guides/introduction.md)\n"+
+					"- [Hosting Media](/guides/hosting-media.md)\n"+
+					"- [Sibling](nested.md)\n")
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	pages, err := crawler.ProbeLLMSTxt(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(pages) != 3 {
+		t.Fatalf("expected 3 pages from relative-link llms.txt, got %d", len(pages))
+	}
+	wantURLs := []string{
+		srv.URL + "/guides/introduction.md",
+		srv.URL + "/guides/hosting-media.md",
+		srv.URL + "/nested.md",
+	}
+	for i, want := range wantURLs {
+		if pages[i].URL != want {
+			t.Errorf("pages[%d].URL = %q, want %q", i, pages[i].URL, want)
+		}
+	}
+}
