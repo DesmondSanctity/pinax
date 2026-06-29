@@ -27,30 +27,38 @@ sites:
     platform: nextra
     minPages: 50
     minProse: 300
-  - url: https://docs.anthropic.com
+  # docs.anthropic.com 301-redirects to platform.claude.com (cross-host),
+  # which drops pages out of scope. Probe the new canonical host directly.
+  - url: https://platform.claude.com/docs
     platform: mintlify
-    minPages: 50
-    minProse: 500
-  - url: https://platform.openai.com/docs
-    platform: custom
-    minPages: 20
-    minProse: 300
+    minPages: 1400
+    minProse: 5000
+  # platform.openai.com/docs is a JS SPA — only the shell page renders without
+  # a browser. Re-add to the canary once v0.5 Track B (renderer fallback) lands.
+  # - url: https://platform.openai.com/docs
+  #   platform: custom
+  #   minPages: 20
+  #   minProse: 300
   - url: https://vercel.com/docs
     platform: custom
     minPages: 50
     minProse: 300
   - url: https://docs.github.com
     platform: custom
-    minPages: 200
+    # github trimmed their llms.txt; currently emits 116 pages (was 200+).
+    minPages: 100
     minProse: 500
   - url: https://supabase.com/docs
     platform: custom+llms.txt
-    minPages: 50
+    # supabase trimmed their llms.txt; currently emits 37 pages.
+    minPages: 30
     minProse: 300
   - url: https://docs.python.org/3/
     platform: sphinx
-    minPages: 200
-    minProse: 500
+    # python's sitemap.xml lists only the 8 per-version landing pages
+    # (3.10..3.16) by design — no per-page sitemap exists upstream.
+    minPages: 6
+    minProse: 1000
   - url: https://agentfield.ai/docs/learn
     platform: docs-ai-json
     minPages: 8
