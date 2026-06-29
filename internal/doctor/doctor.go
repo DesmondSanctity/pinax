@@ -22,18 +22,18 @@ const PageDriftRefuseRatio = 0.5
 // Report is the structured result of a doctor run. Stable JSON shape — the
 // bug-report issue template renders the same fields.
 type Report struct {
-	Name          string                    `json:"name"`
-	BaseURL       string                    `json:"baseUrl"`
-	ManifestAge   time.Duration             `json:"manifestAgeNs"`
-	StoredPages   int                       `json:"storedPages"`
-	StoredSource  string                    `json:"storedSource"`
-	CurrentPages  int                       `json:"currentPages"`
-	CurrentSource string                    `json:"currentSource"`
-	Discovery     []crawler.DiscoveryProbe  `json:"discovery,omitempty"`
-	Preflight     *preflight.Report         `json:"preflight"`
-	Healthy       bool                      `json:"healthy"`
-	Reasons       []string                  `json:"reasons"`
-	PinaxVersion  string                    `json:"pinaxVersion,omitempty"`
+	Name          string                   `json:"name"`
+	BaseURL       string                   `json:"baseUrl"`
+	ManifestAge   time.Duration            `json:"manifestAgeNs"`
+	StoredPages   int                      `json:"storedPages"`
+	StoredSource  string                   `json:"storedSource"`
+	CurrentPages  int                      `json:"currentPages"`
+	CurrentSource string                   `json:"currentSource"`
+	Discovery     []crawler.DiscoveryProbe `json:"discovery,omitempty"`
+	Preflight     *preflight.Report        `json:"preflight"`
+	Healthy       bool                     `json:"healthy"`
+	Reasons       []string                 `json:"reasons"`
+	PinaxVersion  string                   `json:"pinaxVersion,omitempty"`
 }
 
 // Diagnose re-crawls the site behind m and compares the result against
