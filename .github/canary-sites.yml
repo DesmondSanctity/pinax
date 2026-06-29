@@ -51,3 +51,11 @@ sites:
     platform: sphinx
     minPages: 200
     minProse: 500
+  - url: https://agentfield.ai/docs/learn
+    platform: docs-ai-json
+    minPages: 8
+    minProse: 3000
+  - url: https://developers.buffer.com
+    platform: custom+llms.txt+inline-md
+    minPages: 40
+    minProse: 3000
