@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Doctor output, JS-rendered sites, thin pages, the content density gate, and the most common errors.
+description: Doctor output, JS-rendered SPAs, thin pages, the content density gate, and the most common errors.
 section: guides
 order: 4
 ---
@@ -29,25 +29,50 @@ pinax doctor stripe --json
 
 For every manifest at once, omit the name.
 
-## JS-rendered docs
+## JS-rendered docs (SPAs)
 
 Pinax extracts the static HTML the server sends. Pure SPA shells - most
-React-router-only docs sites with no SSR - produce one-line pages that
-say "Loading…" and nothing else. Pinax tries to detect this and either:
+React-router-only docs sites with no SSR, ReadMe.io v2, some Mintlify
+configurations - produce one-line pages that say "Loading…" and nothing
+else.
 
-1. Switches to `llms.txt` if the site exposes one.
-2. Bails out at the preflight stage with a clear error.
+From **v0.5**, Pinax detects this at the content-density preflight and
+automatically escalates to a JS renderer:
 
-If your target site is JS-rendered but you _know_ the URLs are correct,
-try forcing a refresh with `--rebuild-index` so search uses whatever
-prose Pinax did manage to capture:
+```sh
+# Get a free API key first (no credit card, personal 500 RPM quota)
+export JINA_API_KEY=jina_...     # https://jina.ai/reader
+pinax add https://docs.mono.co/docs
+# > site is a JavaScript SPA - will route through renderer 'jina' (~1m16s for 82 pages).
+# > renderer 'jina' rescued the site - manifest will route page fetches through it.
+```
+
+The renderer is [Jina Reader](https://r.jina.ai). Pinax is **BYO key** -
+see [Configuration → JS renderer](/docs/configuration#js-renderer-v05)
+for why (extractable binaries, shared quota, ToS) and the one-line setup.
+
+The chosen renderer is written into the manifest, so `pinax serve` and
+the `get_page` MCP tool route through it too. You need `JINA_API_KEY` in
+**your MCP client's server-launch env** as well - see any of the
+[client pages](/docs/clients/claude-desktop#js-rendered-sites) for the
+`env` block shape.
+
+Flags on `pinax add`:
+
+| Flag                     | Default | What it does                                                                      |
+| ------------------------ | ------- | --------------------------------------------------------------------------------- |
+| `--renderer=auto`        | (on)    | escalate to Jina Reader if the site is a JS SPA                                   |
+| `--renderer=jina`        | -       | same as `auto`, kept for explicit selection when more renderers exist             |
+| `--renderer=off`         | -       | refuse SPA sites, never send URLs to a third-party service                        |
+| `--render-concurrency=N` | `8`     | workers inside the renderer (combined with a 400 RPM cap, ~75s per 500-page site) |
+
+If your target is a static site returning shells for other reasons
+(broken SSR, edge cache warm-up), try `--no-preflight` to force the
+crawl and let `pinax doctor` flag thin pages after the fact:
 
 ```sh
 pinax refresh <name> --rebuild-index
 ```
-
-Failing that, the site is genuinely SPA-only and Pinax v1 can't reach it.
-Open an issue with the URL.
 
 ## The content-density preflight
 
@@ -78,13 +103,16 @@ Three things to check, in order:
 
 ## Errors you might see
 
-| Message                                          | What it means                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `preflight: density below threshold`             | The homepage looked like an SPA shell. Use `--no-preflight` to force.          |
-| `manifest <name> already exists`                 | Use `pinax refresh <name>` instead, or `pinax remove <name>` and re-add.       |
-| `discovery: no llms.txt, no sitemap, BFS failed` | The site has no machine-readable index and links are JS-only. Often unfixable. |
-| `get_page: 404`                                  | A URL drifted out of the docs site. Re-run `pinax refresh <name>`.             |
-| `cache: WAL checkpoint failed`                   | `~/.pinax/cache.db` is on a filesystem without proper locking. Move it.        |
+| Message                                          | What it means                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `preflight: density below threshold`             | The homepage looked like an SPA shell. Set `JINA_API_KEY` and rerun, or `--no-preflight`.  |
+| `JINA_API_KEY not set; manifest not written`     | You hit a JS SPA without a renderer key. Follow the 3-step hint the CLI printed.           |
+| `RENDERER_UNAVAILABLE` (from `get_page`)         | The MCP server is missing `JINA_API_KEY` in its launch env. Add it and restart the client. |
+| `RENDERER_FAILED` (from `get_page`)              | Jina Reader errored (invalid key, rate limit, upstream 5xx). Check `pinax serve` stderr.   |
+| `manifest <name> already exists`                 | Use `pinax refresh <name>` instead, or `pinax remove <name>` and re-add.                   |
+| `discovery: no llms.txt, no sitemap, BFS failed` | The site has no machine-readable index and links are JS-only. Try `--renderer=auto`.       |
+| `get_page: 404`                                  | A URL drifted out of the docs site. Re-run `pinax refresh <name>`.                         |
+| `cache: WAL checkpoint failed`                   | `~/.pinax/cache.db` is on a filesystem without proper locking. Move it.                    |
 
 Most everything else surfaces with a context line; copy the full output
 into a GitHub issue with the URL you ran against.

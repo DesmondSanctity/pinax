@@ -40,6 +40,27 @@ pinax add stripe
 The unified entry covers every manifest. Per-docs entries work too - just
 add the catalog name as the second arg.
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+add `JINA_API_KEY` to the server's `env` block:
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." },
+    },
+  },
+}
+```
+
+Without it, `get_page` calls to SPA-indexed manifests return a
+`RENDERER_UNAVAILABLE` error.
+
 ## 3. Reload Windsurf
 
 Cmd-Shift-P → "Reload Window".

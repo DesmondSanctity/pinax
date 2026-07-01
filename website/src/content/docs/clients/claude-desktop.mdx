@@ -60,6 +60,27 @@ pinax config claude            # prints the unified snippet
 pinax config claude --split    # one entry per manifest
 ```
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+the MCP server needs `JINA_API_KEY` at launch too - add an `env` block:
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." },
+    },
+  },
+}
+```
+
+Without it, `get_page` calls to SPA-indexed manifests return a
+`RENDERER_UNAVAILABLE` error and the agent can't fetch page bodies.
+
 ## 3. Restart Claude Desktop
 
 Quit and relaunch - the app only reads the config file at startup. You

@@ -641,6 +641,10 @@ func suggestionFor(err error) string {
 			return "Upstream documentation site is currently failing. Retry shortly."
 		case fe.Code == "FETCH_FAILED":
 			return "Network error reaching the documentation site. Verify connectivity."
+		case fe.Code == "RENDERER_UNAVAILABLE":
+			return "This site needs a JS renderer. Set JINA_API_KEY (free key at https://jina.ai/reader) in the pinax server env and restart the MCP client."
+		case fe.Code == "RENDERER_FAILED":
+			return "The JS renderer errored — check that JINA_API_KEY is valid and the Jina Reader rate limit isn't exceeded."
 		}
 	}
 	return ""

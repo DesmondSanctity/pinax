@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -244,6 +245,12 @@ func cmdAdd(args []string) error {
 			}
 			r, err := buildRenderer(mode, *o.renderConcurrency)
 			if err != nil {
+				// When the ONLY blocker is a missing key, lead with the
+				// setup steps instead of dumping the density diagnostic.
+				if errors.Is(err, renderer.ErrNoAPIKey) {
+					printMissingKeyHint(os.Stderr, res.BaseURL)
+					return fmt.Errorf("JINA_API_KEY not set; manifest not written")
+				}
 				rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
 				fmt.Fprintln(os.Stderr, "")
 				return fmt.Errorf("cannot escalate to renderer: %w", err)
@@ -305,6 +312,25 @@ func printRendererETA(pages int, name string) {
 	eta := time.Duration(float64(pages)/throughputPerMin*float64(time.Minute)) + 5*time.Second
 	fmt.Printf("site is a JavaScript SPA — will route through renderer '%s' (~%s for %d pages).\n",
 		name, eta.Truncate(time.Second), pages)
+}
+
+// printMissingKeyHint is shown when the escalation path is needed but no
+// Jina key is configured. Leads with the fix so users don't have to parse
+// the density diagnostic first.
+func printMissingKeyHint(w io.Writer, baseURL string) {
+	fmt.Fprintf(w, "\n%s is a JavaScript SPA — plain HTTP returns empty page shells.\n", baseURL)
+	fmt.Fprintln(w, "Pinax can rescue it by routing through Jina Reader (https://r.jina.ai),")
+	fmt.Fprintln(w, "but that needs a free API key. To finish this add:")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "  1. Get a free key   →  https://jina.ai/reader")
+	fmt.Fprintln(w, "  2. Set it in your shell:")
+	fmt.Fprintln(w, "       export JINA_API_KEY=jina_...")
+	fmt.Fprintln(w, "     (add the line to ~/.zshrc or ~/.bashrc to persist across sessions)")
+	fmt.Fprintln(w, "  3. Re-run the same pinax add command.")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Prefer not to use a renderer? Re-run with `--renderer=off` — pinax will")
+	fmt.Fprintln(w, "refuse SPA sites but never send URLs to a third-party service.")
+	fmt.Fprintln(w, "")
 }
 
 // looksLikeURL is a cheap heuristic to distinguish a URL from a catalog key.
