@@ -7,7 +7,7 @@ export const site = {
   brewTap: 'desmondsanctity/tap/pinax',
   goModule: 'github.com/desmondsanctity/pinax/cmd/pinax',
   description:
-    'Pinax crawls a public documentation site, indexes its structure, and exposes it to any MCP client as four focused tools. Pages are fetched live — what your agent reads is what the docs site serves today.',
+    'Pinax crawls a public documentation site, indexes its structure, and exposes it to any MCP client as four focused tools. Pages are fetched live, so what your agent reads is what the docs site serves today.',
 } as const;
 
 export const nav = {

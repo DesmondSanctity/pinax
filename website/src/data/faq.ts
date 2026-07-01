@@ -6,7 +6,7 @@ export type FaqItem = {
 export const faq: readonly FaqItem[] = [
   {
     q: 'What is Pinax?',
-    a: 'A small Go CLI that turns any public documentation site into a local Model Context Protocol server. Run it once, point your MCP client at it, and the docs become live tools your agent can call — no copy-pasting pages into chat.',
+    a: 'A small Go CLI that turns any public documentation site into a local Model Context Protocol server. Run it once, point your MCP client at it, and the docs become live tools your agent can call, with no copy-pasting pages into chat.',
   },
   {
     q: 'Why MCP and not just RAG or a vector database?',
@@ -14,15 +14,15 @@ export const faq: readonly FaqItem[] = [
   },
   {
     q: 'Does Pinax send anything off my machine?',
-    a: "Only the requests you'd make anyway — fetching pages from the docs site itself. No telemetry, no analytics, no third-party APIs. The MCP transport is stdio between Pinax and your client; the log UI is a localhost-only HTTP server.",
+    a: "Only the requests you'd make anyway, fetching pages from the docs site itself. No telemetry, no analytics, no third-party APIs. The MCP transport is stdio between Pinax and your client; the log UI is a localhost-only HTTP server.",
   },
   {
     q: "Which docs sites work? Which don't?",
-    a: 'Two tiers. Anything with a sitemap.xml or llms.txt that renders real HTML on the server works out of the box — most popular dev docs land here. JS-heavy sites (Mintlify, ReadMe.io, framework SPAs) work via the built-in renderer once you set JINA_API_KEY. The catalog page lists the sites we know index cleanly today; any URL with /, . or :// is a valid add target.',
+    a: 'Two tiers. Anything with a sitemap.xml or llms.txt that renders real HTML on the server works out of the box, and most popular dev docs land here. JS-heavy sites (Mintlify, ReadMe.io, framework SPAs) work via the built-in renderer once you set JINA_API_KEY. The catalog page lists the sites we know index cleanly today; any URL with /, . or :// is a valid add target.',
   },
   {
     q: 'What about JS-heavy docs sites like Mintlify, ReadMe.io, or SPAs?',
-    a: 'v0.5 added a pluggable renderer. When pinax add sees a page that is too sparse to be real static HTML, it automatically re-fetches via Jina Reader and records the choice in the manifest so pinax serve keeps using it. Bring your own free key from https://jina.ai/reader and export JINA_API_KEY (or set it in your MCP client env block) — Pinax intentionally does not ship a shared key so your rate limit stays yours and no ToS is bent. Prefer to skip SPAs? Pass --renderer=off.',
+    a: 'v0.5 added a pluggable renderer. When pinax add sees a page that is too sparse to be real static HTML, it automatically re-fetches via Jina Reader and records the choice in the manifest so pinax serve keeps using it. Bring your own free key from https://jina.ai/reader and export JINA_API_KEY (or set it in your MCP client env block). Pinax intentionally does not ship a shared key, so your rate limit stays yours and no ToS is bent. Prefer to skip SPAs? Pass --renderer=off.',
   },
   {
     q: "How do I add a docs site that isn't in the catalog?",
@@ -34,6 +34,6 @@ export const faq: readonly FaqItem[] = [
   },
   {
     q: 'How is it different from gitingest, repomix, or just downloading llms.txt?',
-    a: 'Those tools concatenate or summarise content into one large blob. Pinax exposes structured tools — list_sections, search_pages, get_page — so the agent fetches only the page it needs, when it needs it. No prompt-bloat, no out-of-date copies.',
+    a: 'Those tools concatenate or summarise content into one large blob. Pinax exposes structured tools like list_sections, search_pages, and get_page, so the agent fetches only the page it needs, when it needs it. No prompt-bloat, no out-of-date copies.',
   },
 ];
