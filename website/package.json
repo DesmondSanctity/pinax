@@ -20,7 +20,7 @@
     "@iconify-json/lucide": "^1.2.114",
     "@iconify-json/simple-icons": "^1.2.87",
     "@tailwindcss/vite": "^4.0.0",
-    "astro": "^5.0.0",
+    "astro": "^6.4.6",
     "astro-icon": "^1.1.5",
     "svelte": "^5.0.0",
     "tailwindcss": "^4.0.0"
