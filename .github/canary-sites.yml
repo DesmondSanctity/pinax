@@ -67,3 +67,11 @@ sites:
     platform: custom+llms.txt+inline-md
     minPages: 40
     minProse: 3000
+  # docs.mono.co is a JavaScript SPA — plain HTTP returns empty shells. The
+  # v0.5 Track B renderer routes it through Jina Reader. Requires the
+  # JINA_API_KEY repo secret; the workflow skips this entry when unset.
+  - url: https://docs.mono.co/docs
+    platform: readme-io-spa+renderer
+    requiresRenderer: true
+    minPages: 80
+    minProse: 3000

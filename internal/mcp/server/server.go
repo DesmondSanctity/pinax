@@ -45,6 +45,9 @@ func New(
 	deps.Register(s, func(h mcpsrv.ToolHandlerFunc) mcpsrv.ToolHandlerFunc {
 		return middleware.WithLogging(logStore, displayName, h)
 	})
+	// Renderer registry is populated lazily by tools.Deps on first fetch of
+	// a page whose manifest declares a renderer. That keeps hot-added
+	// manifests working without a server restart.
 	return s
 }
 

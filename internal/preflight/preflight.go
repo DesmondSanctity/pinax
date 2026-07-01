@@ -17,6 +17,7 @@ import (
 	"pinax/internal/buildinfo"
 	"pinax/internal/crawler"
 	"pinax/internal/extractor"
+	"pinax/internal/renderer"
 )
 
 // Defaults for content-density gating. Numbers come from PLATFORM_RECON.md:
@@ -42,6 +43,11 @@ type Options struct {
 	Timeout      time.Duration
 	UserAgent    string
 	HTTPClient   *http.Client
+	// Renderer, when non-nil, routes every probe through the given
+	// renderer instead of direct HTTP. Used to re-test a shell-refused
+	// site through Jina to decide whether the manifest can be saved
+	// with a `renderer` field.
+	Renderer renderer.Renderer
 }
 
 func (o *Options) applyDefaults() {
@@ -198,6 +204,23 @@ func stridedSample(pages []crawler.Page, n int) []crawler.Page {
 
 func probe(ctx context.Context, p crawler.Page, opts Options) PageResult {
 	r := PageResult{URL: p.URL}
+	if opts.Renderer != nil {
+		md, err := opts.Renderer.Fetch(ctx, p.URL)
+		if err != nil {
+			r.Err = err.Error()
+			return r
+		}
+		// For renderer probes the returned markdown IS the extracted body —
+		// no HTML shell to compare against — so measure prose directly and
+		// use the same value for HTMLBytes to keep ratio in [0,1].
+		trimmed := strings.TrimSpace(md)
+		r.HTMLBytes = len(md)
+		r.ProseLen = len(trimmed)
+		if r.HTMLBytes > 0 {
+			r.Ratio = float64(r.ProseLen) / float64(r.HTMLBytes)
+		}
+		return r
+	}
 	// Prefer the per-page content URL (sibling .md from docs-ai.json /
 	// llms.txt) over the canonical page URL when one is available.
 	fetchURL := p.URL

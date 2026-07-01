@@ -13,6 +13,7 @@ import (
 	"pinax/internal/crawler"
 	"pinax/internal/manifest"
 	"pinax/internal/preflight"
+	"pinax/internal/renderer"
 )
 
 // PageDriftRefuseRatio is the upper/lower bound of current/stored page
@@ -29,6 +30,7 @@ type Report struct {
 	StoredSource  string                   `json:"storedSource"`
 	CurrentPages  int                      `json:"currentPages"`
 	CurrentSource string                   `json:"currentSource"`
+	Renderer      string                   `json:"renderer,omitempty"`
 	Discovery     []crawler.DiscoveryProbe `json:"discovery,omitempty"`
 	Preflight     *preflight.Report        `json:"preflight"`
 	Healthy       bool                     `json:"healthy"`
@@ -48,6 +50,7 @@ func Diagnose(ctx context.Context, m *manifest.Manifest, pinaxVersion string) (*
 		ManifestAge:  time.Since(m.CrawledAt),
 		StoredPages:  len(m.Pages),
 		StoredSource: m.Source,
+		Renderer:     m.Renderer,
 		PinaxVersion: pinaxVersion,
 		Reasons:      []string{},
 	}
@@ -59,7 +62,19 @@ func Diagnose(ctx context.Context, m *manifest.Manifest, pinaxVersion string) (*
 	rep.CurrentPages = len(res.Pages)
 	rep.CurrentSource = res.Source
 	rep.Discovery = res.Discovery
-	rep.Preflight = preflight.Check(ctx, res.Pages, preflight.Options{})
+	// Route the preflight sample through the renderer when the manifest
+	// says so — otherwise every SPA-backed manifest would show as
+	// unhealthy because plain-HTTP probes return empty shells.
+	preOpts := preflight.Options{}
+	if m.Renderer != "" {
+		if r, rerr := buildDoctorRenderer(m.Renderer); rerr == nil {
+			preOpts.Renderer = r
+		} else {
+			rep.Reasons = append(rep.Reasons,
+				fmt.Sprintf("manifest requires renderer %q but %v", m.Renderer, rerr))
+		}
+	}
+	rep.Preflight = preflight.Check(ctx, res.Pages, preOpts)
 
 	if rep.StoredPages > 0 {
 		ratio := float64(rep.CurrentPages) / float64(rep.StoredPages)
@@ -91,6 +106,9 @@ func (r *Report) FormatText(w io.Writer) {
 	fmt.Fprintf(w, "  manifest age:    %s\n", truncDuration(r.ManifestAge))
 	fmt.Fprintf(w, "  stored pages:    %d (via %s)\n", r.StoredPages, r.StoredSource)
 	fmt.Fprintf(w, "  current pages:   %d (via %s)\n", r.CurrentPages, r.CurrentSource)
+	if r.Renderer != "" {
+		fmt.Fprintf(w, "  renderer:        %s\n", r.Renderer)
+	}
 	if r.Preflight != nil {
 		fmt.Fprintf(w, "  mean prose:      %d chars\n", r.Preflight.MeanProseLen)
 		fmt.Fprintf(w, "  mean text/html:  %.3f\n", r.Preflight.MeanRatio)
@@ -137,5 +155,14 @@ func truncDuration(d time.Duration) time.Duration {
 		return d.Truncate(time.Second)
 	default:
 		return d.Truncate(time.Millisecond)
+	}
+}
+
+func buildDoctorRenderer(name string) (renderer.Renderer, error) {
+	switch name {
+	case renderer.NameJina:
+		return renderer.NewJina(renderer.DefaultOptions())
+	default:
+		return nil, fmt.Errorf("unknown renderer %q", name)
 	}
 }

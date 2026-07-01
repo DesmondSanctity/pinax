@@ -36,6 +36,7 @@ jobs:
         id: probe
         env:
           HOME: ${{ runner.temp }}/pinax-home
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
         run: |
           set -uo pipefail
           mkdir -p "$HOME"
@@ -47,6 +48,11 @@ jobs:
             min_pages=$(yq -r ".sites[$i].minPages" .github/canary-sites.yml)
             min_prose=$(yq -r ".sites[$i].minProse" .github/canary-sites.yml)
             platform=$(yq -r ".sites[$i].platform" .github/canary-sites.yml)
+            needs_renderer=$(yq -r ".sites[$i].requiresRenderer // false" .github/canary-sites.yml)
+            if [ "$needs_renderer" = "true" ] && [ -z "$JINA_API_KEY" ]; then
+              echo "::notice::skipping $url — requires JINA_API_KEY (not set)"
+              continue
+            fi
             # Mirror cmd/pinax.deriveName: strip scheme + path, dots -> dashes.
             name=$(echo "$url" | sed -E 's#^https?://##; s#/.*##; s#\.#-#g')
             echo "::group::$url ($platform)"

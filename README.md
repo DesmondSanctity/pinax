@@ -252,14 +252,39 @@ make test-integration # build-tag-gated network tests
 
 ## Limitations
 
-- JS-rendered sites (Mintlify, readme.io) are supported only when they expose
-  a usable `llms.txt` or sitemap. Pure SPA shells without server-rendered
-  content will produce thin pages.
+- JS-rendered sites without a usable `llms.txt`/sitemap need the renderer
+  (see below). Pinax auto-detects and escalates; with `JINA_API_KEY` set,
+  SPAs like `docs.mono.co` work transparently.
 - `search_pages` is a token-AND substring match with a fuzzy fallback for
   typos.
 - No scheduled re-crawl — use `pinax refresh <name>`, and `pinax doctor`
   to detect drift.
 - No authentication for private docs.
+
+### JavaScript SPA support (renderer)
+
+Pinax detects sites whose HTML shells contain no real prose and escalates
+to a JS renderer. Today the built-in renderer is
+[Jina Reader](https://jina.ai/reader), which returns clean Markdown for
+any URL. Set the free API key once:
+
+```bash
+export JINA_API_KEY=jina_...    # get one at https://jina.ai/reader
+pinax add https://docs.mono.co/docs
+# → site is a JavaScript SPA — will route through renderer 'jina' (~1m16s for 82 pages).
+# → renderer 'jina' rescued the site — manifest will route page fetches through it.
+```
+
+The chosen renderer is written into the manifest, so `pinax serve` and the
+MCP `get_page` tool route through it too. Flags on `pinax add`:
+
+```
+--renderer=auto|jina|off        default auto (escalate on shell detection)
+--render-concurrency=N          default 8 workers
+```
+
+The runtime also needs `JINA_API_KEY` in its environment — set it in your
+MCP client's server-launch env alongside any other Pinax config.
 
 ## Contributing
 

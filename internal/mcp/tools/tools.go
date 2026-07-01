@@ -22,6 +22,7 @@ import (
 	"pinax/internal/crawler"
 	"pinax/internal/extractor"
 	"pinax/internal/manifest"
+	"pinax/internal/renderer"
 )
 
 // Deps wires the runtime resources the tool handlers need.
@@ -36,6 +37,15 @@ import (
 type Deps struct {
 	Cache *cache.PageCache
 	HTTP  *http.Client
+
+	// Renderers is a name→impl registry consulted by fetchPage when the
+	// resolved manifest carries a non-empty Renderer field. Missing keys
+	// are built lazily via resolveRenderer so hot-added manifests work
+	// without a server restart.
+	Renderers map[string]renderer.Renderer
+
+	// rendererMu guards Renderers for concurrent lazy construction.
+	rendererMu sync.Mutex
 
 	// Reload, if non-nil, replaces Manifests on every routing call. Cheap —
 	// manifests are tiny JSON files. Set by the server constructor in unified
@@ -484,6 +494,25 @@ func (d *Deps) fetchPage(ctx context.Context, url string) (string, error) {
 		}
 	}
 
+	// If any manifest owning this URL declares a renderer, route through it.
+	// The renderer returns Markdown directly, so we skip the HTML/MD sniff.
+	if name := d.rendererForURL(url); name != "" {
+		r, err := d.resolveRenderer(name)
+		if err != nil {
+			return "", &fetchError{Code: "RENDERER_UNAVAILABLE", Err: err}
+		}
+		md, err := r.Fetch(ctx, url)
+		if err != nil {
+			return "", &fetchError{Code: "RENDERER_FAILED", Err: err}
+		}
+		out := extractor.FromMarkdown(url, md)
+		d.storeSession(url, out)
+		if d.Cache != nil {
+			_ = d.Cache.Set(url, out)
+		}
+		return out, nil
+	}
+
 	// If any manifest knows this URL and recorded a per-page content URL
 	// (sibling Markdown endpoint from docs-ai.json or llms.txt), fetch that
 	// instead. URL stays the canonical key for cache + session.
@@ -543,6 +572,50 @@ func (d *Deps) contentURLFor(canonicalURL string) string {
 		}
 	}
 	return canonicalURL
+}
+
+// rendererForURL returns the renderer name declared by whichever manifest
+// owns canonicalURL, or "" when the URL isn't found or the owning manifest
+// has no renderer configured.
+func (d *Deps) rendererForURL(canonicalURL string) string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	for _, m := range d.manifests {
+		if m.Renderer == "" {
+			continue
+		}
+		for _, p := range m.Pages {
+			if p.URL == canonicalURL {
+				return m.Renderer
+			}
+		}
+	}
+	return ""
+}
+
+// resolveRenderer returns the renderer for `name`, constructing it once
+// on first use. A missing JINA_API_KEY (or any other config error) is
+// surfaced verbatim so the user gets a clear fix path in the tool result.
+func (d *Deps) resolveRenderer(name string) (renderer.Renderer, error) {
+	d.rendererMu.Lock()
+	defer d.rendererMu.Unlock()
+	if d.Renderers == nil {
+		d.Renderers = map[string]renderer.Renderer{}
+	}
+	if r, ok := d.Renderers[name]; ok && r != nil {
+		return r, nil
+	}
+	switch name {
+	case renderer.NameJina:
+		r, err := renderer.NewJina(renderer.DefaultOptions())
+		if err != nil {
+			return nil, err
+		}
+		d.Renderers[name] = r
+		return r, nil
+	default:
+		return nil, fmt.Errorf("unknown renderer %q", name)
+	}
 }
 
 func (d *Deps) storeSession(url, content string) {

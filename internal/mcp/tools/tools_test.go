@@ -15,6 +15,7 @@ import (
 	"pinax/internal/crawler"
 	"pinax/internal/manifest"
 	"pinax/internal/mcp/tools"
+	"pinax/internal/renderer"
 )
 
 func testManifest(pages ...crawler.Page) *manifest.Manifest {
@@ -267,6 +268,52 @@ func TestGetPage_RequiresURL(t *testing.T) {
 	if !res.IsError {
 		t.Error("expected error when url missing")
 	}
+}
+
+func TestGetPage_RoutesThroughRenderer(t *testing.T) {
+	// Stub renderer masquerading as Jina so lazy resolution doesn't kick in.
+	var renderCalls int
+	stub := &stubRenderer{name: "jina", body: "# hi\n\nrendered prose", called: &renderCalls}
+
+	// Bare-HTTP endpoint that MUST NOT be called when a renderer is set.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Fatal("direct HTTP fetch called even though manifest declares renderer")
+		w.Write([]byte("nope"))
+	}))
+	defer srv.Close()
+
+	m := &manifest.Manifest{
+		Name:     "spa",
+		BaseURL:  "https://spa.example",
+		Pages:    []crawler.Page{{URL: srv.URL + "/page"}},
+		Renderer: "jina",
+	}
+	d := tools.NewSingle(m, nil)
+	d.HTTP = srv.Client()
+	d.Renderers = map[string]renderer.Renderer{"jina": stub}
+
+	res := callTool(t, d.GetPage, "get_page", map[string]any{"url": srv.URL + "/page"})
+	if res.IsError {
+		t.Fatalf("unexpected error: %s", toolText(t, res))
+	}
+	if !strings.Contains(toolText(t, res), "rendered prose") {
+		t.Fatalf("missing rendered content: %s", toolText(t, res))
+	}
+	if renderCalls != 1 {
+		t.Errorf("expected 1 renderer call, got %d", renderCalls)
+	}
+}
+
+type stubRenderer struct {
+	name   string
+	body   string
+	called *int
+}
+
+func (s *stubRenderer) Name() string { return s.name }
+func (s *stubRenderer) Fetch(ctx context.Context, url string) (string, error) {
+	*s.called++
+	return s.body, nil
 }
 
 // ---- unified mode (multi-manifest routing) ----
