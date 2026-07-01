@@ -18,7 +18,11 @@ export const faq: readonly FaqItem[] = [
   },
   {
     q: "Which docs sites work? Which don't?",
-    a: 'Anything with a sitemap.xml or llms.txt works out of the box. Pages need to render on the server (HTML, not pure SPA shells) — most popular dev docs do. The catalog page lists the 15 we know index cleanly today; any URL with /, . or :// is a valid add target.',
+    a: 'Two tiers. Anything with a sitemap.xml or llms.txt that renders real HTML on the server works out of the box — most popular dev docs land here. JS-heavy sites (Mintlify, ReadMe.io, framework SPAs) work via the built-in renderer once you set JINA_API_KEY. The catalog page lists the sites we know index cleanly today; any URL with /, . or :// is a valid add target.',
+  },
+  {
+    q: 'What about JS-heavy docs sites like Mintlify, ReadMe.io, or SPAs?',
+    a: 'v0.5 added a pluggable renderer. When pinax add sees a page that is too sparse to be real static HTML, it automatically re-fetches via Jina Reader and records the choice in the manifest so pinax serve keeps using it. Bring your own free key from https://jina.ai/reader and export JINA_API_KEY (or set it in your MCP client env block) — Pinax intentionally does not ship a shared key so your rate limit stays yours and no ToS is bent. Prefer to skip SPAs? Pass --renderer=off.',
   },
   {
     q: "How do I add a docs site that isn't in the catalog?",

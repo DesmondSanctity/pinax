@@ -22,7 +22,7 @@ export const howItWorks: readonly Step[] = [
     index: '01',
     verb: 'Add',
     command: 'pinax add stripe',
-    body: 'Pick a name from the catalog or paste any docs URL. Pinax discovers structure via llms.txt or sitemap.xml and writes a local manifest.',
+    body: 'Pick a name from the catalog or paste any docs URL. Pinax discovers structure via llms.txt or sitemap.xml, escalates to a JS renderer for SPAs, and writes a local manifest.',
   },
   {
     index: '02',
