@@ -22,6 +22,10 @@ type Manifest struct {
 	Source    string         `json:"source"`
 	CrawledAt time.Time      `json:"crawledAt"`
 	Pages     []crawler.Page `json:"pages"`
+	// Renderer, when non-empty, names the JS renderer (e.g. "jina") that
+	// the runtime must route page fetches through. Empty for sites whose
+	// static HTML/Markdown extraction works directly.
+	Renderer string `json:"renderer,omitempty"`
 }
 
 // Dir returns the directory where manifests are stored, creating it if needed.

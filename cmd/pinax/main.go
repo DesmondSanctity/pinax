@@ -22,6 +22,7 @@ import (
 	"pinax/internal/manifest"
 	mcpserver "pinax/internal/mcp/server"
 	"pinax/internal/preflight"
+	"pinax/internal/renderer"
 )
 
 func main() {
@@ -152,20 +153,24 @@ func printCommandHelp(w io.Writer, cmd string) {
 // ---------- add ----------
 
 type addOpts struct {
-	name        *string
-	maxPages    *int
-	concurrency *int
-	excludes    multiString
-	noPreflight *bool
+	name              *string
+	maxPages          *int
+	concurrency       *int
+	excludes          multiString
+	noPreflight       *bool
+	rendererMode      *string
+	renderConcurrency *int
 }
 
 func newAddFlags() (*flag.FlagSet, *addOpts) {
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	o := &addOpts{
-		name:        fs.String("name", "", "manifest name (defaults to derived from host)"),
-		maxPages:    fs.Int("max-pages", 0, "override default max pages"),
-		concurrency: fs.Int("concurrency", 0, "override default concurrency"),
-		noPreflight: fs.Bool("no-preflight", false, "skip the content-density check (use only if you know the site works)"),
+		name:              fs.String("name", "", "manifest name (defaults to derived from host)"),
+		maxPages:          fs.Int("max-pages", 0, "override default max pages"),
+		concurrency:       fs.Int("concurrency", 0, "override default crawl concurrency"),
+		noPreflight:       fs.Bool("no-preflight", false, "skip the content-density check (use only if you know the site works)"),
+		rendererMode:      fs.String("renderer", "auto", "JS renderer for SPA sites: auto|jina|off"),
+		renderConcurrency: fs.Int("render-concurrency", 0, "override renderer worker count (default 8)"),
 	}
 	fs.Var(&o.excludes, "exclude", "URL substring(s) to skip (repeatable)")
 	return fs, o
@@ -223,24 +228,83 @@ func cmdAdd(args []string) error {
 	}
 	fmt.Printf("discovered %d pages via %s in %s\n", len(res.Pages), res.Source, time.Since(start).Truncate(time.Millisecond))
 
+	rendererName := ""
 	if !*o.noPreflight {
 		fmt.Print("running content-density check ... ")
 		rep := preflight.Check(ctx, res.Pages, preflight.Options{})
 		fmt.Printf("sampled %d, mean prose %d chars, mean ratio %.3f\n",
 			rep.SampledTotal, rep.MeanProseLen, rep.MeanRatio)
 		if rep.ShouldRefuse {
-			rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
-			return fmt.Errorf("content-density check failed; manifest not written")
+			// Escalate to renderer if allowed. `auto` and `jina` both try
+			// the renderer; `off` refuses immediately with today's diagnostic.
+			mode := strings.ToLower(strings.TrimSpace(*o.rendererMode))
+			if mode == "off" {
+				rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
+				return fmt.Errorf("content-density check failed; manifest not written")
+			}
+			r, err := buildRenderer(mode, *o.renderConcurrency)
+			if err != nil {
+				rep.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
+				fmt.Fprintln(os.Stderr, "")
+				return fmt.Errorf("cannot escalate to renderer: %w", err)
+			}
+			printRendererETA(len(res.Pages), r.Name())
+			fmt.Printf("re-checking via renderer '%s' ... ", r.Name())
+			rep2 := preflight.Check(ctx, res.Pages, preflight.Options{Renderer: r})
+			fmt.Printf("sampled %d, mean prose %d chars\n", rep2.SampledTotal, rep2.MeanProseLen)
+			if rep2.ShouldRefuse {
+				fmt.Fprintln(os.Stderr, "renderer still could not extract enough prose:")
+				rep2.FormatDiagnostic(os.Stderr, res.BaseURL, *o.name, res.Source)
+				return fmt.Errorf("content-density check failed even via renderer; manifest not written")
+			}
+			rendererName = r.Name()
+			fmt.Printf("renderer '%s' rescued the site — manifest will route page fetches through it.\n", rendererName)
 		}
 	}
 
 	m := manifest.FromCrawlResult(*o.name, res)
+	m.Renderer = rendererName
 	if err := manifest.Save(m); err != nil {
 		return err
 	}
 	p, _ := manifest.Path(*o.name)
 	fmt.Printf("saved manifest %s → %s\n", *o.name, p)
 	return nil
+}
+
+// buildRenderer wires the requested renderer with the given concurrency
+// override. Mode "auto" today means "jina" — kept as a separate token so a
+// future release can add more renderers without a CLI break.
+func buildRenderer(mode string, concurrency int) (renderer.Renderer, error) {
+	switch mode {
+	case "", "auto", "jina":
+		opts := renderer.DefaultOptions()
+		if concurrency > 0 {
+			opts.Concurrency = concurrency
+		}
+		return renderer.NewJina(opts)
+	default:
+		return nil, fmt.Errorf("unknown renderer mode %q (want auto|jina|off)", mode)
+	}
+}
+
+// printRendererETA prints a one-line time estimate so users understand why
+// SPA sites take longer than static sites. Assumes ~7s avg latency per page
+// (Jina's published number) and the renderer's own concurrency ceiling.
+func printRendererETA(pages int, name string) {
+	// The renderer's default concurrency is 8 and RPM cap is 400 (see
+	// renderer.DefaultOptions). Effective throughput is bounded by whichever
+	// hits first: latency * workers or RPM cap.
+	const avgLatency = 7 * time.Second
+	const workers = 8
+	const rpmCap = 400
+	throughputPerMin := float64(workers) * 60.0 / avgLatency.Seconds()
+	if throughputPerMin > float64(rpmCap) {
+		throughputPerMin = float64(rpmCap)
+	}
+	eta := time.Duration(float64(pages)/throughputPerMin*float64(time.Minute)) + 5*time.Second
+	fmt.Printf("site is a JavaScript SPA — will route through renderer '%s' (~%s for %d pages).\n",
+		name, eta.Truncate(time.Second), pages)
 }
 
 // looksLikeURL is a cheap heuristic to distinguish a URL from a catalog key.
@@ -321,6 +385,9 @@ func cmdRefresh(args []string) error {
 		return err
 	}
 	updated := manifest.FromCrawlResult(name, res)
+	// Preserve the renderer choice recorded at add time — a re-crawl only
+	// updates the page list, not the SPA-vs-static verdict.
+	updated.Renderer = m.Renderer
 	if err := manifest.Save(updated); err != nil {
 		return err
 	}
