@@ -14,7 +14,7 @@ export const faq: readonly FaqItem[] = [
   },
   {
     q: 'Does Pinax send anything off my machine?',
-    a: "Only the requests you'd make anyway, fetching pages from the docs site itself. No telemetry, no analytics, no third-party APIs. The MCP transport is stdio between Pinax and your client; the log UI is a localhost-only HTTP server.",
+    a: "Only the requests you'd make anyway, fetching pages from the docs site itself. No telemetry, no analytics, no first-party cloud. The MCP transport is stdio between Pinax and your client; the log UI is a localhost-only HTTP server. The one opt-in exception is the JS renderer: if you set JINA_API_KEY to unlock SPA support, the page URLs you index are proxied through Jina Reader (jina.ai) so it can execute JS and hand back HTML. Pass --renderer=off to stay fully first-party.",
   },
   {
     q: "Which docs sites work? Which don't?",
@@ -30,7 +30,7 @@ export const faq: readonly FaqItem[] = [
   },
   {
     q: 'Can I run it against private or auth-gated docs?',
-    a: 'Not in v0.3. Auth headers and cookie-based crawling are planned for v0.4. Today Pinax fetches as an anonymous client, so anything behind a login screen is invisible to it.',
+    a: 'Not today. Pinax fetches as an anonymous HTTP client, so anything behind a login, an API key, or a session cookie is invisible to it. There is no built-in support for auth headers, bearer tokens, or cookie jars in the current release. If you need this, open an issue on the repo with your use case so it can be scoped.',
   },
   {
     q: 'How is it different from gitingest, repomix, or just downloading llms.txt?',
