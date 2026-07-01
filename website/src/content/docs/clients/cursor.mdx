@@ -50,6 +50,24 @@ by adding its name to `args`:
 }
 ```
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+add `JINA_API_KEY` to the server's `env` block:
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." },
+    },
+  },
+}
+```
+
 ## 3. Reload Cursor
 
 Cmd-Shift-P → "Reload Window". Cursor picks up the new servers without a

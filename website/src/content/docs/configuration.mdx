@@ -29,19 +29,70 @@ environment variables for the few things that need to vary per machine.
 
 ## Environment variables
 
-| Variable            | Default                      | What it does                                       |
-| ------------------- | ---------------------------- | -------------------------------------------------- |
-| `PINAX_HOME`        | `$HOME/.pinax`               | root directory for everything Pinax stores         |
-| `PINAX_CATALOG_URL` | GitHub `main`'s catalog.json | where `pinax catalog refresh` fetches from         |
-| `PINAX_USER_AGENT`  | `pinax/<version>`            | overrides the User-Agent on outbound HTTP requests |
-| `PINAX_CACHE_TTL`   | `24h`                        | TTL applied to entries in the page cache           |
-| `PINAX_LOG_LEVEL`   | `info`                       | one of `debug`, `info`, `warn`, `error`            |
+| Variable            | Default                      | What it does                                                                          |
+| ------------------- | ---------------------------- | ------------------------------------------------------------------------------------- |
+| `PINAX_HOME`        | `$HOME/.pinax`               | root directory for everything Pinax stores                                            |
+| `PINAX_CATALOG_URL` | GitHub `main`'s catalog.json | where `pinax catalog refresh` fetches from                                            |
+| `PINAX_USER_AGENT`  | `pinax/<version>`            | overrides the User-Agent on outbound HTTP requests                                    |
+| `PINAX_CACHE_TTL`   | `24h`                        | TTL applied to entries in the page cache                                              |
+| `PINAX_LOG_LEVEL`   | `info`                       | one of `debug`, `info`, `warn`, `error`                                               |
+| `JINA_API_KEY`      | unset                        | required for JS-rendered SPA sites (v0.5+); see [JS renderer](#js-renderer-v05) below |
 
 All values can also be set per-invocation with the usual shell prefix:
 
 ```sh
 PINAX_LOG_LEVEL=debug pinax serve --http
 ```
+
+## JS renderer (v0.5+)
+
+Some docs sites (`docs.mono.co`, most ReadMe.io, some Mintlify) only
+paint their content after JavaScript runs. Pinax detects this at the
+content-density preflight and can route those pages through a JS
+renderer instead of refusing.
+
+The built-in renderer uses [Jina Reader](https://r.jina.ai). It's free
+for personal use (500 RPM per account, no credit card), but you bring
+your own key:
+
+```sh
+# One-time setup - persist in ~/.zshrc or ~/.bashrc
+export JINA_API_KEY=jina_...     # https://jina.ai/reader
+
+pinax add https://docs.mono.co/docs
+```
+
+### Why BYO instead of a bundled key
+
+Every serious CLI that touches a paid API does BYO (`gh auth login`,
+`OPENAI_API_KEY`, `AWS_ACCESS_KEY_ID`, `docker login`). Shipping a
+bundled key would be:
+
+1. **Extractable** from every binary (`strings pinax | grep jina_`).
+2. **Shared** - Jina's 500 RPM quota is account-wide, so every user
+   would collide with every other user.
+3. **Against Jina's ToS**, which forbids redistributing API keys.
+4. **Impossible to rotate** without breaking every existing install.
+
+One env var, once, is a fair trade.
+
+### At runtime
+
+The chosen renderer is written into the manifest, so `pinax serve` and
+the `get_page` MCP tool route through it too - but the server also needs
+`JINA_API_KEY` in **its** environment. For Claude Desktop that means
+adding an `env` block to `claude_desktop_config.json`; every client page
+([Claude Desktop](/docs/clients/claude-desktop#js-rendered-sites),
+[Cursor](/docs/clients/cursor#js-rendered-sites), etc.) shows the exact
+shape.
+
+When the key is missing at runtime, `get_page` returns a structured
+`RENDERER_UNAVAILABLE` error with a suggestion the agent can act on.
+
+### Opting out
+
+Don't want to send URLs to a third-party service? Pass `--renderer=off`
+to `pinax add`. SPA sites will refuse instead of escalating.
 
 ## Cache control
 
@@ -66,3 +117,7 @@ pinax add <url> --no-preflight             # bypass the density gate
 `--no-preflight` is the escape hatch for sites that fail the content
 density check but you want indexed anyway. The check is documented in
 [Troubleshooting](/docs/troubleshooting).
+
+For JS-rendered SPAs (Mintlify, ReadMe.io, custom React docs) don't use
+`--no-preflight` - use the renderer instead. See
+[JS renderer](#js-renderer-v05) above.

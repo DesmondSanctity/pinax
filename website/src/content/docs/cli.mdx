@@ -17,15 +17,19 @@ pinax add <url|catalog-name> \
   [--name NAME] \
   [--exclude PATTERN ...] \
   [--max-pages N] \
-  [--no-preflight]
+  [--no-preflight] \
+  [--renderer auto|jina|off] \
+  [--render-concurrency N]
 ```
 
-| Flag             | Default | Notes                                                                        |
-| ---------------- | ------- | ---------------------------------------------------------------------------- |
-| `--name`         | derived | server name; defaults to the host or catalog key                             |
-| `--exclude`      | none    | repeatable substring filter applied to discovered URLs                       |
-| `--max-pages`    | `1500`  | crawl ceiling; reached pages stop discovery early                            |
-| `--no-preflight` | off     | skip the content density gate (see [Troubleshooting](/docs/troubleshooting)) |
+| Flag                   | Default | Notes                                                                                                                                   |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--name`               | derived | server name; defaults to the host or catalog key                                                                                        |
+| `--exclude`            | none    | repeatable substring filter applied to discovered URLs                                                                                  |
+| `--max-pages`          | `1500`  | crawl ceiling; reached pages stop discovery early                                                                                       |
+| `--no-preflight`       | off     | skip the content density gate (see [Troubleshooting](/docs/troubleshooting))                                                            |
+| `--renderer`           | `auto`  | JS renderer mode for SPA sites: `auto` escalates on preflight failure, `jina` forces it, `off` refuses (v0.5+, requires `JINA_API_KEY`) |
+| `--render-concurrency` | `8`     | worker semaphore inside the renderer; combined with a 400 RPM cap, a 500-page SPA takes ~75s                                            |
 
 ## `pinax list`
 

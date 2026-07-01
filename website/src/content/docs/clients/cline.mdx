@@ -43,6 +43,27 @@ pinax add stripe
 
 Pin a single docs site with `"args": ["serve", "stripe"]`.
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+add `JINA_API_KEY` to the server's `env` block:
+
+```jsonc
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." },
+    },
+  },
+}
+```
+
+Without it, `get_page` calls to SPA-indexed manifests return a
+`RENDERER_UNAVAILABLE` error.
+
 ## 3. Reload Cline
 
 Click the refresh icon in the Cline MCP servers list, or reload the VS

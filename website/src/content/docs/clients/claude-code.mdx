@@ -31,6 +31,16 @@ claude mcp add stripe-docs -- pinax serve stripe
 `claude mcp add` writes to `~/.claude/.mcp.json` (or the project-local
 `.mcp.json` if you pass `--project`).
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+pass the key at registration time with `-e`:
+
+```sh
+claude mcp add pinax -e JINA_API_KEY=jina_... -- pinax serve
+```
+
 ## 3. Confirm it's loaded
 
 ```sh

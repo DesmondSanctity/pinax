@@ -263,28 +263,63 @@ make test-integration # build-tag-gated network tests
 
 ### JavaScript SPA support (renderer)
 
-Pinax detects sites whose HTML shells contain no real prose and escalates
-to a JS renderer. Today the built-in renderer is
-[Jina Reader](https://jina.ai/reader), which returns clean Markdown for
-any URL. Set the free API key once:
+Some docs sites (`docs.mono.co`, most ReadMe.io, some Mintlify) only paint
+their content after JavaScript runs — a plain HTTP fetch returns an empty
+shell. Pinax detects this during `pinax add` and can route those pages
+through a JS renderer instead of refusing.
+
+The built-in renderer uses [**Jina Reader**](https://jina.ai/reader), which
+returns clean Markdown for any URL. **You bring your own key** — Jina's
+free tier gives every user their own 500 requests/minute quota, no billing
+info required:
 
 ```bash
-export JINA_API_KEY=jina_...    # get one at https://jina.ai/reader
+# One-time: get a free key and put it in your shell profile
+export JINA_API_KEY=jina_...        # https://jina.ai/reader → "API Keys"
+
 pinax add https://docs.mono.co/docs
-# → site is a JavaScript SPA — will route through renderer 'jina' (~1m16s for 82 pages).
-# → renderer 'jina' rescued the site — manifest will route page fetches through it.
+# crawling https://docs.mono.co/docs ...
+# discovered 82 pages via llmstxt in 1.3s
+# running content-density check ... sampled 20, mean prose 85 chars, mean ratio 0.001
+# site is a JavaScript SPA — will route through renderer 'jina' (~1m16s for 82 pages).
+# re-checking via renderer 'jina' ... sampled 20, mean prose 7924 chars
+# renderer 'jina' rescued the site — manifest will route page fetches through it.
 ```
 
+Add the `export` line to `~/.zshrc` (or `~/.bashrc`) so it persists.
+
+**Why BYO instead of a bundled key?** A shipped key would be extractable
+from every binary, would share one 500 RPM bucket across all pinax users,
+and would violate Jina's terms of service. Every serious CLI that touches a
+paid API does BYO for the same reasons (`gh auth login`,
+`OPENAI_API_KEY`, aws/gcloud/azure credentials, etc.).
+
 The chosen renderer is written into the manifest, so `pinax serve` and the
-MCP `get_page` tool route through it too. Flags on `pinax add`:
+MCP `get_page` tool route through it too — but the server also needs
+`JINA_API_KEY` in **its** environment. For Claude Desktop, add it to your
+`claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pinax": {
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." }
+    }
+  }
+}
+```
+
+Flags on `pinax add`:
 
 ```
 --renderer=auto|jina|off        default auto (escalate on shell detection)
 --render-concurrency=N          default 8 workers
 ```
 
-The runtime also needs `JINA_API_KEY` in its environment — set it in your
-MCP client's server-launch env alongside any other Pinax config.
+Use `--renderer=off` if you'd rather have pinax refuse SPA sites than send
+any URL to a third-party service.
 
 ## Contributing
 
