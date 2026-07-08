@@ -5,8 +5,6 @@ section: clients
 order: 5
 ---
 
-import Figure from '~/components/docs/Figure.astro';
-
 VS Code's Copilot Chat reads MCP servers from a workspace-scoped JSON
 file:
 
@@ -43,11 +41,6 @@ Create `.vscode/mcp.json` at the repo root:
 A single entry covers every manifest you've added. Pin one docs site by
 swapping in `"args": ["serve", "stripe"]`.
 
-<Figure
-  alt="VS Code editor with .vscode/mcp.json open showing the pinax server entry"
-  caption="Workspace MCP config at .vscode/mcp.json"
-/>
-
 ### JS-rendered sites
 
 If any manifest was indexed with `renderer: jina` (see
@@ -75,11 +68,6 @@ Without it, `get_page` calls to SPA-indexed manifests return a
 Open the Command Palette (Cmd/Ctrl-Shift-P) and run **MCP: List
 Servers**. Pick `pinax`, then **Start Server**. Copilot will spawn
 `pinax serve` and surface its tools in the next chat turn.
-
-<Figure
-  alt="Command Palette showing MCP: List Servers with pinax in the results"
-  caption="MCP: List Servers in the Command Palette"
-/>
 
 ## 4. Use it
 
