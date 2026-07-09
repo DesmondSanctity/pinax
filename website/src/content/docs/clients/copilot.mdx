@@ -63,6 +63,28 @@ add `JINA_API_KEY` to the server's `env` block:
 Without it, `get_page` calls to SPA-indexed manifests return a
 `RENDERER_UNAVAILABLE` error.
 
+### JS-rendered sites
+
+If any manifest was indexed with `renderer: jina` (see
+[Configuration → JS renderer](/docs/configuration#js-renderer-v05)),
+add `JINA_API_KEY` to the server's `env` block:
+
+```jsonc
+{
+  "servers": {
+    "pinax": {
+      "type": "stdio",
+      "command": "pinax",
+      "args": ["serve"],
+      "env": { "JINA_API_KEY": "jina_..." }
+    }
+  }
+}
+```
+
+Without it, `get_page` calls to SPA-indexed manifests return a
+`RENDERER_UNAVAILABLE` error.
+
 ## 3. Start the server from Copilot Chat
 
 Open the Command Palette (Cmd/Ctrl-Shift-P) and run **MCP: List
